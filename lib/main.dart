@@ -2,14 +2,21 @@ import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:window_manager/window_manager.dart';
-import 'ui/splash_screen.dart';
+import 'ui/screens/splash_screen.dart';
+import 'ui/screens/main_navigation.dart';
 import 'data/data_seeder.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Seed initial data
-  await DataSeeder().seedInitialData();
+  print("Before seeding");
+  try{
+    await DataSeeder().seedInitialData();
+    print("After seeding");
+  }catch (e){
+    print("Seeding failed");
+  }
   
   // Locking this because running a mobile emulator lags alot 
   if (!kIsWeb && (Platform.isLinux || Platform.isWindows || Platform.isMacOS)) {
@@ -53,6 +60,9 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: const SplashScreen(),
+      routes: {
+        '/home': (context) => const MainNavigation(),
+      },
     );
   }
 }

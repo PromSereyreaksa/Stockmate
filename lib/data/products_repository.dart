@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import '../models/product.dart';
+import '../models/statistic.dart';
 import 'database_helper.dart';
 
 class ProductsRepository {
@@ -178,20 +179,21 @@ class ProductsRepository {
   }
 
   // Get statistics
-  Future<Map<String, dynamic>> getStatistics() async {
-    final db = await _dbHelper.database;
-    
-    final result = await db.rawQuery('''
-      SELECT 
-        COUNT(*) as totalItems,
-        SUM(CASE WHEN currentQuantity <= minStock THEN 1 ELSE 0 END) as lowStockCount,
-        SUM(CASE WHEN currentQuantity = 0 THEN 1 ELSE 0 END) as outOfStockCount,
-        SUM(currentQuantity * costPrice) as totalValue,
-        SUM(currentQuantity * (sellingPrice - costPrice)) as estimatedProfit
-      FROM products
-      WHERE isDeleted = 0
-    ''');
-    
-    return result.first;
-  }
+  Future<Statistics> getStatistics() async {
+  final db = await _dbHelper.database;
+
+  final result = await db.rawQuery('''
+    SELECT 
+      COUNT(*) as total_items,
+      SUM(CASE WHEN currentQuantity <= minStock THEN 1 ELSE 0 END) as low_stock_count,
+      SUM(CASE WHEN currentQuantity = 0 THEN 1 ELSE 0 END) as out_of_stock_count,
+      SUM(currentQuantity * costPrice) as total_value,
+      SUM(currentQuantity * (sellingPrice - costPrice)) as estimated_profit
+    FROM products
+    WHERE isDeleted = 0
+  ''');
+
+  return Statistics.fromDb(result.first);
+}
+
 }

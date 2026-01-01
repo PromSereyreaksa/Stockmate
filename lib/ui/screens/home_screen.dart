@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../data/products_repository.dart';
-import '../models/product.dart';
-import 'widgets/summary_card.dart';
-import 'widgets/stock_alert_card.dart';
-import 'widgets/recent_item_card.dart';
+import '../../data/products_repository.dart';
+import '../../models/product.dart';
+import '../widgets/summary_card.dart';
+import '../widgets/stock_alert_card.dart';
+import '../widgets/recent_item_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,7 +19,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _lowStockCount = 0;
   List<Product> _stockAlerts = [];
   List<Product> _recentItems = [];
-  int _selectedIndex = 0;
   bool _isLoading = true;
 
   @override
@@ -36,17 +35,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final products = await _repository.getAllProducts();
     
     setState(() {
-      _totalItems = stats['totalItems'] ?? 0;
-      _lowStockCount = stats['lowStockCount'] ?? 0;
+      _totalItems = stats.totalItems;
+      _lowStockCount = stats.lowStockCount;
       _stockAlerts = alerts;
       _recentItems = products.take(3).toList();
       _isLoading = false;
-    });
-  }
-
-  void _onNavigationTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
     });
   }
 
@@ -82,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -140,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       value: _totalItems.toString(),
                       icon: Icons.shopping_bag_outlined,
                       iconColor: Colors.blue,
-                      iconBackground: Colors.blue.withOpacity(0.1),
+                      iconBackground: Colors.blue.withValues(alpha: 0.1),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -150,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       value: _lowStockCount.toString(),
                       icon: Icons.warning_amber_outlined,
                       iconColor: Colors.orange,
-                      iconBackground: Colors.orange.withOpacity(0.1),
+                      iconBackground: Colors.orange.withValues(alpha: 0.1),
                     ),
                   ),
                 ],
@@ -256,34 +249,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
 
-            const SizedBox(height: 80),
+            const SizedBox(height: 24),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onNavigationTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2_outlined),
-            label: 'Items',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_outline),
-            label: 'Add',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'Reports',
-          ),
-        ],
       ),
     );
   }

@@ -235,3 +235,205 @@ That's it for today. Database is working, stock updates persist, and the foundat
 
 — Reaksa
 
+**Developer:** Davann
+**Date:** January 1, 2026
+
+---
+
+## Day 1 - Database Optimization & Analytics Implementation
+
+Today I refactored the database initialization to be cleaner and built out the full analytics screen with real data visualization.
+
+### Database Initialization Improvement
+
+The old approach used hardcoded library paths which wasn't portable:
+
+```dart
+// OLD - hardcoded path
+DynamicLibrary.open('/usr/lib/x86_64-linux-gnu/libsqlite3.so');
+```
+
+I replaced it with the FFI (Foreign Function Interface) factory approach in `DatabaseHelper._init()`:
+
+```dart
+// NEW - cleaner, platform-agnostic
+DatabaseHelper._init() {
+  if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
+}
+```
+
+This is much better because:
+- No hardcoded paths that break on different systems
+- The sqflite package handles library loading automatically
+- Works across Linux, Windows, and macOS
+- More maintainable and portable
+
+### Files Changed
+
+- `lib/data/database_helper.dart` - Refactored `_init()` method
+
+---
+
+## Restructured Navigation
+
+I moved `MainNavigation` from being just in HomeScreen to being the central hub. Now the flow is:
+
+**New Navigation Structure:**
+```
+Splash Screen (2 seconds)
+  ↓ pushReplacement()
+MainNavigation (with BottomNavigationBar)
+  ├─ Home (HomeScreen)
+  ├─ Items (AnalyticsScreen)
+  ├─ Add (placeholder)
+  └─ Reports (placeholder)
+```
+
+The `MainNavigation` widget uses `IndexedStack` to keep all screens loaded while switching which one is visible. This keeps state and makes switching between tabs smooth.
+
+**Updated Architecture:**
+
+```
+lib/
+├── models/
+│   ├── product.dart
+│   ├── statistic.dart          # Contains Statistics & StockMovementData models
+│   └── stock_summary.dart
+├── data/
+│   ├── database_helper.dart    # UPDATED: FFI init
+│   ├── products_repository.dart
+│   └── data_seeder.dart
+└── ui/
+    ├── navigation/
+    │   └── stock_tab.dart
+    ├── screens/
+    │   ├── splash_screen.dart
+    │   ├── main_navigation.dart  # NOW THE CENTRAL HUB
+    │   ├── home_screen.dart
+    │   └── analytics_screen.dart # NEW: Full implementation
+    └── widgets/
+        ├── stat_card.dart           # NEW: Metric display cards
+        ├── stock_movement_chart.dart # NEW: Line chart visualization
+        ├── recent_item_card.dart
+        ├── stock_alert_card.dart
+        └── summary_card.dart
+```
+
+---
+
+## Built Full Analytics Screen
+
+Implemented `AnalyticsScreen` with real database queries and interactive visualizations.
+
+### StatCard Widget
+
+Simple reusable widget that displays key metrics:
+- Label (text label)
+- Value (main number)
+- Icon (with background color)
+- Background color (customizable)
+
+**On analytics screen shows:**
+- Total Items - count of all products
+- Low Stock Count - products below minStock
+- Out of Stock Count - currentQuantity = 0
+- Total Value - sum of all inventory cost
+- Estimated Profit - calculated margin
+
+Each card is clean and scannable.
+
+### StockMovementChart Widget
+
+Interactive line chart showing stock flow over time:
+- Uses `fl_chart` package for rendering
+- Two lines: Stock In (blue) and Stock Out (red)
+- Configurable date range (7, 14, 30 days)
+- Aggregates daily totals from stock_movements table
+- Shows totals legend below chart
+
+**How it aggregates:**
+```
+1. Get all products from database
+2. For each product, fetch stock_movements history
+3. Filter movements by selected date range
+4. Group by date and sum daily stock in/out
+5. Render as line chart with grid
+```
+
+### AnalyticsScreen Data Flow
+
+```dart
+_loadData() async {
+  1. Query getStatistics()
+     → totalItems, lowStockCount, outOfStockCount, totalValue, profit
+  
+  2. Query getAllProducts()
+     → get all product data
+  
+  3. Call _getStockMovements(days)
+     → loop through all products
+     → get each product's stock history
+     → aggregate by date
+     → return StockMovementData list
+  
+  4. setState() updates UI
+     → StatCards render with numbers
+     → Chart renders with aggregated data
+}
+```
+
+### New Models
+
+Updated `models/statistic.dart` with:
+
+```dart
+class Statistics {
+  final int totalItems;
+  final int lowStockCount;
+  final int outOfStockCount;
+  final double totalValue;
+  final double estimatedProfit;
+}
+
+class StockMovementData {
+  final DateTime date;
+  final int stockIn;
+  final int stockOut;
+}
+```
+
+These models handle the analytics data structure and can convert to/from database format.
+
+### Dependencies
+
+Make sure `pubspec.yaml` includes:
+```yaml
+fl_chart: ^0.65.0  # For chart rendering
+```
+
+---
+
+## What's Working
+
+- Database initialization with FFI - clean and portable  
+- Main navigation routes all tabs  
+- Analytics screen loads real statistics  
+- StatCard widgets display metrics cleanly  
+- Stock movement chart aggregates daily data  
+- Bottom nav switches between Home and Analytics  
+
+## Still To Do
+
+- Add tab to product form
+- Implement Reports tab  
+- Add filter options to analytics (by category, date range)
+- Implement Items/Product List screen
+- Connect navigation properly to all screens
+
+That's it for today. Database is cleaner, navigation is more structured, and analytics screen is fully functional with real data.
+
+— Vannie
+

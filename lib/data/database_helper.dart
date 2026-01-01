@@ -2,17 +2,13 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
 import 'dart:io';
-import 'dart:ffi';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
   DatabaseHelper._init() {
-    if (Platform.isLinux || Platform.isWindows) {
-      if (Platform.isLinux) {
-        DynamicLibrary.open('/usr/lib/x86_64-linux-gnu/libsqlite3.so');
-      }
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS){
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
     }
