@@ -65,7 +65,7 @@ class RecentItemCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Stock: ${product.stock}',
+                  'Stock: ${product.currentQuantity}',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[600],
@@ -78,7 +78,7 @@ class RecentItemCard extends StatelessWidget {
           Row(
             children: [
               IconButton(
-                onPressed: product.stock > 0 ? onDecrement : null,
+                onPressed: product.currentQuantity > 0 ? onDecrement : null,
                 icon: const Icon(Icons.remove_circle_outline),
                 color: Colors.blue,
                 iconSize: 28,
@@ -87,7 +87,7 @@ class RecentItemCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                '${product.stock}',
+                '${product.currentQuantity}',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

@@ -3,11 +3,15 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:window_manager/window_manager.dart';
 import 'ui/splash_screen.dart';
+import 'data/data_seeder.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Comment: I am locking this to a fixed mobile view because when ran an emulator it lagged alot..
+  // Seed initial data
+  await DataSeeder().seedInitialData();
+  
+  // Locking this because running a mobile emulator lags alot 
   if (!kIsWeb && (Platform.isLinux || Platform.isWindows || Platform.isMacOS)) {
     await windowManager.ensureInitialized();
     

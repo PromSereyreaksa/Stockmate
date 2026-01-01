@@ -1,54 +1,109 @@
+enum ProductsCategory {
+  rice,
+  noodles,
+  snacks,
+  beverages,
+  condiments,
+  cannedGoods,
+  dairy,
+  frozen,
+  bakery,
+  household,
+  other
+}
+
 class Product {
-  final String id;
-  final String name;
-  final String imagePath;
-  final int stock;
-  final String? category;
+  String productId;
+  String name;
+  String description;
+  int currentQuantity;
+  DateTime expDate;
+  int stock;
+  int minStock;
+  double costPrice;
+  double sellingPrice;
+  String barcode;
+  String brand;
+  String supplier;
+  String imagePath;
+  ProductsCategory category;
+  bool isDeleted;
+  DateTime createdAt;
+  DateTime updatedAt;
 
   Product({
-    required this.id,
+    required this.productId,
     required this.name,
-    required this.imagePath,
+    required this.description,
+    required this.currentQuantity,
+    required this.expDate,
     required this.stock,
-    this.category,
-  });
+    required this.minStock,
+    required this.costPrice,
+    required this.sellingPrice,
+    required this.barcode,
+    required this.brand,
+    required this.supplier,
+    required this.imagePath,
+    required this.category,
+    this.isDeleted = false,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
 
-  bool get isLowStock => stock > 0 && stock <= 5;
-  bool get isOutOfStock => stock == 0;
+  // Computed properties
+  bool get isLowStock => currentQuantity <= minStock;
+  bool get isOutOfStock => currentQuantity == 0;
+  bool get isExpiringSoon => expDate.difference(DateTime.now()).inDays <= 7;
+  double get profitMargin => sellingPrice - costPrice;
 
-  factory Product.fromJson(Map<String, dynamic> json) {
-    return Product(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      imagePath: json['imagePath'] as String,
-      stock: json['stock'] as int,
-      category: json['category'] as String?,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
+  // Convert Product to Map for database
+  Map<String, dynamic> toMap() {
     return {
-      'id': id,
+      'productId': productId,
       'name': name,
-      'imagePath': imagePath,
+      'description': description,
+      'currentQuantity': currentQuantity,
+      'expDate': expDate.toIso8601String(),
       'stock': stock,
-      'category': category,
+      'minStock': minStock,
+      'costPrice': costPrice,
+      'sellingPrice': sellingPrice,
+      'barcode': barcode,
+      'brand': brand,
+      'supplier': supplier,
+      'imagePath': imagePath,
+      'category': category.name,
+      'isDeleted': isDeleted ? 1 : 0,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
-  Product copyWith({
-    String? id,
-    String? name,
-    String? imagePath,
-    int? stock,
-    String? category,
-  }) {
+  // Create Product from Map (from database)
+  factory Product.fromMap(Map<String, dynamic> map) {
     return Product(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      imagePath: imagePath ?? this.imagePath,
-      stock: stock ?? this.stock,
-      category: category ?? this.category,
+      productId: map['productId'],
+      name: map['name'],
+      description: map['description'] ?? '',
+      currentQuantity: map['currentQuantity'],
+      expDate: DateTime.parse(map['expDate']),
+      stock: map['stock'],
+      minStock: map['minStock'],
+      costPrice: map['costPrice'],
+      sellingPrice: map['sellingPrice'],
+      barcode: map['barcode'] ?? '',
+      brand: map['brand'] ?? '',
+      supplier: map['supplier'] ?? '',
+      imagePath: map['imagePath'] ?? '',
+      category: ProductsCategory.values.firstWhere(
+        (e) => e.name == map['category'],
+        orElse: () => ProductsCategory.other,
+      ),
+      isDeleted: map['isDeleted'] == 1,
+      createdAt: DateTime.parse(map['createdAt']),
+      updatedAt: DateTime.parse(map['updatedAt']),
     );
   }
 }

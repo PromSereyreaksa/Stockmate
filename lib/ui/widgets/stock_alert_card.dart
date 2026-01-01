@@ -17,7 +17,7 @@ class StockAlertCard extends StatelessWidget {
     final borderColor = isOutOfStock ? Colors.red : Colors.orange;
     final subtitle = isOutOfStock
         ? '0 left'
-        : 'Only ${product.stock} left';
+        : 'Only ${product.currentQuantity} left';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

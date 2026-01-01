@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/mock_data_source.dart';
+import '../data/products_repository.dart';
 import '../models/product.dart';
-import '../models/stock_summary.dart';
 import 'widgets/summary_card.dart';
 import 'widgets/stock_alert_card.dart';
 import 'widgets/recent_item_card.dart';
@@ -14,10 +13,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late StockSummary summary;
-  late List<Product> stockAlerts;
-  late List<Product> recentItems;
+  final ProductsRepository _repository = ProductsRepository();
+  
+  int _totalItems = 0;
+  int _lowStockCount = 0;
+  List<Product> _stockAlerts = [];
+  List<Product> _recentItems = [];
   int _selectedIndex = 0;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -25,27 +28,32 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
-  void _loadData() {
-    summary = MockDataSource.getStockSummary();
-    stockAlerts = MockDataSource.getStockAlerts();
-    recentItems = MockDataSource.getRecentItems();
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    
+    final stats = await _repository.getStatistics();
+    final alerts = await _repository.getLowStockProducts();
+    final products = await _repository.getAllProducts();
+    
+    setState(() {
+      _totalItems = stats['totalItems'] ?? 0;
+      _lowStockCount = stats['lowStockCount'] ?? 0;
+      _stockAlerts = alerts;
+      _recentItems = products.take(3).toList();
+      _isLoading = false;
+    });
   }
 
   void _onNavigationTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
-    // TODO: Navigate to other screens when implemented
   }
 
-  void _updateStock(Product product, int change) {
-    setState(() {
-      // Update the stock in the data source
-      final newStock = (product.stock + change).clamp(0, 999);
-      // In a real app, this would update the database
-      // For now, just refresh the data
-      _loadData();
-    });
+  Future<void> _updateStock(Product product, int change) async {
+    final newQuantity = (product.currentQuantity + change).clamp(0, 999);
+    await _repository.updateStock(product.productId, newQuantity);
+    _loadData();
   }
 
   @override
@@ -129,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: SummaryCard(
                       label: 'Total Items',
-                      value: summary.totalItems.toString(),
+                      value: _totalItems.toString(),
                       icon: Icons.shopping_bag_outlined,
                       iconColor: Colors.blue,
                       iconBackground: Colors.blue.withOpacity(0.1),
@@ -139,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: SummaryCard(
                       label: 'Low Stock',
-                      value: summary.lowStockCount.toString(),
+                      value: _lowStockCount.toString(),
                       icon: Icons.warning_amber_outlined,
                       iconColor: Colors.orange,
                       iconBackground: Colors.orange.withOpacity(0.1),
@@ -166,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   Text(
-                    '${stockAlerts.length} items',
+                    '${_stockAlerts.length} items',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.black54,
@@ -179,21 +187,28 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
 
             // Stock Alerts List
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: stockAlerts.length,
-              itemBuilder: (context, index) {
-                final product = stockAlerts[index];
-                return StockAlertCard(
-                  product: product,
-                  onTap: () {
-                    // TODO: Navigate to product details
-                  },
-                );
-              },
-            ),
+            _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : _stockAlerts.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Center(
+                          child: Text('No stock alerts'),
+                        ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _stockAlerts.length,
+                        itemBuilder: (context, index) {
+                          final product = _stockAlerts[index];
+                          return StockAlertCard(
+                            product: product,
+                            onTap: () {},
+                          );
+                        },
+                      ),
 
             const SizedBox(height: 24),
 
@@ -224,20 +239,22 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
 
             // Recent Items List
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: recentItems.length,
-              itemBuilder: (context, index) {
-                final product = recentItems[index];
-                return RecentItemCard(
-                  product: product,
-                  onDecrement: () => _updateStock(product, -1),
-                  onIncrement: () => _updateStock(product, 1),
-                );
-              },
-            ),
+            _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _recentItems.length,
+                    itemBuilder: (context, index) {
+                      final product = _recentItems[index];
+                      return RecentItemCard(
+                        product: product,
+                        onDecrement: () => _updateStock(product, -1),
+                        onIncrement: () => _updateStock(product, 1),
+                      );
+                    },
+                  ),
 
             const SizedBox(height: 80),
           ],
