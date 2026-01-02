@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/product.dart';
+import '../screens/item_detail_screen.dart';
 
 class StockAlertCard extends StatelessWidget {
   final Product product;
@@ -27,7 +28,7 @@ class StockAlertCard extends StatelessWidget {
         border: Border.all(color: borderColor, width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -75,7 +76,14 @@ class StockAlertCard extends StatelessWidget {
           Icons.chevron_right,
           color: Colors.grey[400],
         ),
-        onTap: onTap,
+        onTap: (){
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ItemDetailScreen(productId: product.productId),
+            ),
+          );
+        },
       ),
     );
   }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import '../navigation/stock_tab.dart';
+// import 'package:stockmate/ui/screens/product_list_screen.dart';
 import 'home_screen.dart';
 import 'analytics_screen.dart';
+import 'add_product_screen.dart';
+
+enum Tab { home, items, add, reports }
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -11,45 +14,40 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  StockTab _currentTab = StockTab.home;
-
-  final _tabs = [
-    const HomeScreen(),
-    const AnalyticsScreen(),
-    const SizedBox(), // placeholder for Add
-    const AnalyticsScreen(), // placeholder for Reports
-  ];
-
-  void _onTabSelected(int index) {
-    final selectedTab = StockTab.values[index];
-
-    if (selectedTab == StockTab.add) {
-      // TODO: Implement add product navigation
-      return;
-    }
-
-    setState(() {
-      _currentTab = selectedTab;
-    });
-  }
+  Tab _currentTab = Tab.home;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
         index: _currentTab.index,
-        children: _tabs,
+        children: [
+          HomeScreen(),
+          Placeholder(),
+          AddProductScreen(),
+          AnalyticsScreen(),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentTab.index,
-        onTap: _onTabSelected,
+        onTap: (index) {
+          setState(() {
+            _currentTab = Tab.values[index];
+          });
+        },
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.blue,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory_2), label: 'Items'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inventory_2),
+            label: 'Items',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.add_circle), label: 'Add'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Reports'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: 'Reports',
+          ),
         ],
       ),
     );

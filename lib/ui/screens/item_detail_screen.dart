@@ -1,0 +1,514 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../data/products_repository.dart';
+import '../../models/product.dart';
+import '../widgets/info_row.dart';
+import '../widgets/activity_item.dart';
+import '../dialogs/add_stock_dialog.dart';
+
+class ItemDetailScreen extends StatefulWidget {
+  final String productId;
+
+  const ItemDetailScreen({
+    super.key,
+    required this.productId,
+  });
+
+  @override
+  State<ItemDetailScreen> createState() => _ItemDetailScreenState();
+}
+
+class _ItemDetailScreenState extends State<ItemDetailScreen> {
+  final ProductsRepository _repository = ProductsRepository();
+  
+  Product? _product;
+  List<Map<String, dynamic>> _recentActivity = [];
+  bool _isLoading = true;
+  bool _showAllActivity = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final product = await _repository.getProductById(widget.productId);
+      final history = await _repository.getStockHistory(widget.productId);
+
+      setState(() {
+        _product = product;
+        _recentActivity = history;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading product details: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _showAddStockDialog() async {
+    if (_product == null) return;
+
+    await showDialog(
+      context: context,
+      builder: (context) => AddStockDialog(
+        productName: _product!.name,
+        currentStock: _product!.currentQuantity,
+        onAdd: (quantity, reason) async {
+          final newQuantity = _product!.currentQuantity + quantity;
+          await _repository.updateStock(_product!.productId, newQuantity);
+          _loadData();
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Added $quantity units to stock'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  void _navigateToEdit() {
+    // TODO: Navigate to edit screen
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Edit screen coming soon!'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showReports() {
+    // TODO: Show detailed reports
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Reports screen coming soon!'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading || _product == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF5F5F5),
+        appBar: AppBar(
+          title: const Text('Item Details'),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          foregroundColor: Colors.black87,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final product = _product!;
+    
+    // Determine status
+    Color statusColor;
+    String statusText;
+    if (product.isOutOfStock) {
+      statusColor = Colors.red;
+      statusText = 'Out of Stock';
+    } else if (product.isLowStock) {
+      statusColor = Colors.orange;
+      statusText = 'Low Stock';
+    } else {
+      statusColor = Colors.green;
+      statusText = 'In Stock';
+    }
+
+    // Activity list (limit to 3 if not showing all)
+    final displayedActivity = _showAllActivity 
+        ? _recentActivity 
+        : _recentActivity.take(3).toList();
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        title: const Text(
+          'Item Details',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black87,
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Product Image & Basic Info
+            Container(
+              width: double.infinity,
+              color: Colors.white,
+              child: Column(
+                children: [
+                  // Product Image
+                  Container(
+                    width: double.infinity,
+                    height: 250,
+                    color: Colors.grey.shade100,
+                    child: product.imagePath.isNotEmpty
+                        ? Image.asset(
+                            product.imagePath,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.inventory_2_outlined,
+                                size: 80,
+                                color: Colors.grey.shade400,
+                              );
+                            },
+                          )
+                        : Icon(
+                            Icons.inventory_2_outlined,
+                            size: 80,
+                            color: Colors.grey.shade400,
+                          ),
+                  ),
+                  
+                  // Product Name & Status
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          product.description,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            statusText,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: statusColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Stock Info
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildStockCard(
+                            'Current Stock',
+                            product.currentQuantity.toString(),
+                            Colors.blue,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStockCard(
+                            'Min Stock',
+                            product.minStock.toString(),
+                            Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Product Information
+            Container(
+              width: double.infinity,
+              color: Colors.white,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Product Information',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  InfoRow(
+                    label: 'Category',
+                    value: _formatCategory(product.category),
+                  ),
+                  InfoRow(
+                    label: 'Brand',
+                    value: product.brand,
+                  ),
+                  InfoRow(
+                    label: 'Cost Price',
+                    value: '\$${product.costPrice.toStringAsFixed(2)}',
+                  ),
+                  InfoRow(
+                    label: 'Selling Price',
+                    value: '\$${product.sellingPrice.toStringAsFixed(2)}',
+                  ),
+                  InfoRow(
+                    label: 'Supplier',
+                    value: product.supplier,
+                  ),
+                  InfoRow(
+                    label: 'Barcode',
+                    value: product.barcode,
+                  ),
+                  InfoRow(
+                    label: 'Exp Date',
+                    value: DateFormat('MMM dd, yyyy').format(product.expDate),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Recent Activity
+            Container(
+              width: double.infinity,
+              color: Colors.white,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Recent Activity',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      if (_recentActivity.length > 3)
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _showAllActivity = !_showAllActivity;
+                            });
+                          },
+                          child: Text(
+                            _showAllActivity ? 'Show Less' : 'View All',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  if (displayedActivity.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.history,
+                              size: 48,
+                              color: Colors.grey.shade300,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'No activity yet',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: displayedActivity.length,
+                      itemBuilder: (context, index) {
+                        final activity = displayedActivity[index];
+                        return ActivityItem(
+                          type: activity['changeType'] as String,
+                          previousQty: activity['previousQty'] as int,
+                          newQty: activity['newQty'] as int,
+                          timestamp: DateTime.parse(activity['timestamp']),
+                          reason: activity['reason'] as String?,
+                        );
+                      },
+                    ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 100), // Space for bottom buttons
+          ],
+        ),
+      ),
+
+      // Bottom Action Buttons
+      bottomSheet: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Add Stock Button (Primary)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _showAddStockDialog,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Add Stock',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Edit & Reports Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _navigateToEdit,
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      label: const Text('Edit Item'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        foregroundColor: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _showReports,
+                      icon: const Icon(Icons.bar_chart, size: 20),
+                      label: const Text('Reports'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        foregroundColor: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStockCard(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatCategory(ProductsCategory category) {
+    final name = category.name;
+    return name[0].toUpperCase() + name.substring(1);
+  }
+}
