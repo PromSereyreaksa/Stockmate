@@ -49,6 +49,19 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
+  Future<void> _deleteProduct(Product product) async {
+    await _repository.deleteProduct(product.productId);
+    _loadData();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${product.name} deleted'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -221,7 +234,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   TextButton(
                     onPressed: () {
-                      // TODO: Navigate to all items
+                      // Navigate to products tab in main navigation
+                      final mainNav = context.findAncestorStateOfType<State>();
+                      if (mainNav != null && mainNav.mounted) {
+                        // Access parent MainNavigation to switch tab
+                        Navigator.of(context).popUntil((route) => route.isFirst);
+                      }
                     },
                     child: const Text('View All'),
                   ),
@@ -241,10 +259,58 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: _recentItems.length,
                     itemBuilder: (context, index) {
                       final product = _recentItems[index];
-                      return RecentItemCard(
-                        product: product,
-                        onDecrement: () => _updateStock(product, -1),
-                        onIncrement: () => _updateStock(product, 1),
+                      return Dismissible(
+                        key: Key(product.productId),
+                        direction: DismissDirection.startToEnd,
+                        confirmDismiss: (direction) async {
+                          return await showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Delete Product'),
+                              content: Text('Are you sure you want to delete ${product.name}?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        onDismissed: (direction) {
+                          _deleteProduct(product);
+                        },
+                        background: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.centerLeft,
+                          child: const Row(
+                            children: [
+                              Icon(Icons.delete, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text(
+                                'Delete',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        child: RecentItemCard(
+                          product: product,
+                          onDecrement: () => _updateStock(product, -1),
+                          onIncrement: () => _updateStock(product, 1),
+                        ),
                       );
                     },
                   ),

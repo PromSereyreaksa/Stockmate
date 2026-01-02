@@ -112,6 +112,19 @@ class _ProductListScreenState extends State<ProductListScreen>
     });
   }
 
+  Future<void> _deleteProduct(Product product) async {
+    await _repository.deleteProduct(product.productId);
+    _loadProducts();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${product.name} deleted'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   void _showSortMenu() {
     showModalBottomSheet(
       context: context,
@@ -319,7 +332,55 @@ class _ProductListScreenState extends State<ProductListScreen>
                     itemCount: _filteredProducts.length,
                     itemBuilder: (context, index) {
                       final product = _filteredProducts[index];
-                      return _buildProductCard(product);
+                      return Dismissible(
+                        key: Key(product.productId),
+                        direction: DismissDirection.startToEnd,
+                        confirmDismiss: (direction) async {
+                          return await showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Delete Product'),
+                              content: Text('Are you sure you want to delete ${product.name}?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        onDismissed: (direction) {
+                          _deleteProduct(product);
+                        },
+                        background: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.centerLeft,
+                          child: const Row(
+                            children: [
+                              Icon(Icons.delete, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text(
+                                'Delete',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        child: _buildProductCard(product),
+                      );
                     },
                   ),
           ),
