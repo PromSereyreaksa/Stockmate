@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import '../../models/product.dart';
 import '../screens/item_detail_screen.dart';
 
@@ -44,20 +45,42 @@ class RecentItemCard extends StatelessWidget {
             // Product Image
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                product.imagePath,
-                width: 60,
-                height: 60,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 60,
-                    height: 60,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.image_not_supported, color: Colors.grey),
-                  );
-                },
-              ),
+              child: product.imagePath.isNotEmpty
+                  ? (product.imagePath.startsWith('assets/')
+                      ? Image.asset(
+                          product.imagePath,
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 60,
+                              height: 60,
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                            );
+                          },
+                        )
+                      : Image.file(
+                          File(product.imagePath),
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 60,
+                              height: 60,
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                            );
+                          },
+                        ))
+                  : Container(
+                      width: 60,
+                      height: 60,
+                      color: Colors.grey[200],
+                      child: const Icon(Icons.inventory_2_outlined, color: Colors.grey),
+                    ),
             ),
             const SizedBox(width: 16),
             // Product Info

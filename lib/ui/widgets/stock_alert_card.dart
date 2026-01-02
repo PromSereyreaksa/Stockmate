@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import '../../models/product.dart';
 import '../screens/item_detail_screen.dart';
 
@@ -38,20 +39,42 @@ class StockAlertCard extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Image.asset(
-            product.imagePath,
-            width: 56,
-            height: 56,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: 56,
-                height: 56,
-                color: Colors.grey[200],
-                child: const Icon(Icons.image_not_supported, color: Colors.grey),
-              );
-            },
-          ),
+          child: product.imagePath.isNotEmpty
+              ? (product.imagePath.startsWith('assets/')
+                  ? Image.asset(
+                      product.imagePath,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 56,
+                          height: 56,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                        );
+                      },
+                    )
+                  : Image.file(
+                      File(product.imagePath),
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 56,
+                          height: 56,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                        );
+                      },
+                    ))
+              : Container(
+                  width: 56,
+                  height: 56,
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.inventory_2_outlined, color: Colors.grey),
+                ),
         ),
         title: Text(
           product.name,

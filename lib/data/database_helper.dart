@@ -28,9 +28,23 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
     );
+  }
+
+  // Upgrade database
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Check if imagePath column exists, if not add it
+      var tableInfo = await db.rawQuery('PRAGMA table_info(products)');
+      bool hasImagePath = tableInfo.any((col) => col['name'] == 'imagePath');
+      
+      if (!hasImagePath) {
+        await db.execute('ALTER TABLE products ADD COLUMN imagePath TEXT');
+      }
+    }
   }
 
   // Create tables
@@ -77,6 +91,24 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_products_expdate ON products(expDate)');
     await db.execute('CREATE INDEX idx_products_quantity ON products(currentQuantity)');
     await db.execute('CREATE INDEX idx_stock_movements_product ON stock_movements(productId)');
+  }
+
+  // Reset/Reinitialize database
+  Future<void> resetDatabase() async {
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, 'stockmate.db');
+    
+    // Close the database if it's open
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+    
+    // Delete the database file
+    await deleteDatabase(path);
+    
+    // Reinitialize the database
+    _database = await _initDB('stockmate.db');
   }
 
   // Close database

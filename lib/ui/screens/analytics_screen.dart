@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
 import '/data/products_repository.dart';
 import '/models/product.dart';
 import '/models/statistic.dart';
@@ -164,10 +165,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined, color: Colors.black87),
@@ -469,16 +466,27 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             child: product.imagePath.isNotEmpty
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      product.imagePath,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.inventory_2_outlined,
-                          color: Colors.grey.shade400,
-                        );
-                      },
-                    ),
+                    child: product.imagePath.startsWith('assets/')
+                        ? Image.asset(
+                            product.imagePath,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.inventory_2_outlined,
+                                color: Colors.grey.shade400,
+                              );
+                            },
+                          )
+                        : Image.file(
+                            File(product.imagePath),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.inventory_2_outlined,
+                                color: Colors.grey.shade400,
+                              );
+                            },
+                          ),
                   )
                 : Icon(
                     Icons.inventory_2_outlined,

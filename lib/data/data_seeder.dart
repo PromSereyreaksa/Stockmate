@@ -45,7 +45,7 @@ class DataSeeder {
         productId: 'P003',
         name: 'Doritos Nacho Cheese 48g',
         description: 'Nacho cheese flavored tortilla chips',
-        imagePath: 'assets/products/P003.jpg',
+        imagePath: 'assets/products/P003.png',
         currentQuantity: 25,
         stock: 60,
         minStock: 15,
@@ -93,6 +93,61 @@ class DataSeeder {
 
     for (var product in initialProducts) {
       await _repository.insertProduct(product);
+    }
+    
+    // Seed some stock movement history for the last 7 days
+    await _seedStockMovements();
+  }
+  
+  Future<void> _seedStockMovements() async {
+    final now = DateTime.now();
+    
+    // Sample stock movements over the past 7 days
+    final movements = [
+      // Day 1 - 7 days ago
+      {'productId': 'P001', 'prevQty': 0, 'newQty': 50, 'type': 'add', 'daysAgo': 7},
+      {'productId': 'P002', 'prevQty': 0, 'newQty': 30, 'type': 'add', 'daysAgo': 7},
+      {'productId': 'P003', 'prevQty': 0, 'newQty': 60, 'type': 'add', 'daysAgo': 7},
+      
+      // Day 2 - 6 days ago
+      {'productId': 'P004', 'prevQty': 0, 'newQty': 40, 'type': 'add', 'daysAgo': 6},
+      {'productId': 'P005', 'prevQty': 0, 'newQty': 45, 'type': 'add', 'daysAgo': 6},
+      
+      // Day 3 - 5 days ago
+      {'productId': 'P001', 'prevQty': 50, 'newQty': 45, 'type': 'remove', 'daysAgo': 5},
+      {'productId': 'P002', 'prevQty': 30, 'newQty': 25, 'type': 'remove', 'daysAgo': 5},
+      
+      // Day 4 - 4 days ago
+      {'productId': 'P003', 'prevQty': 60, 'newQty': 50, 'type': 'remove', 'daysAgo': 4},
+      {'productId': 'P004', 'prevQty': 40, 'newQty': 30, 'type': 'remove', 'daysAgo': 4},
+      
+      // Day 5 - 3 days ago
+      {'productId': 'P001', 'prevQty': 45, 'newQty': 35, 'type': 'remove', 'daysAgo': 3},
+      {'productId': 'P005', 'prevQty': 45, 'newQty': 35, 'type': 'remove', 'daysAgo': 3},
+      
+      // Day 6 - 2 days ago
+      {'productId': 'P002', 'prevQty': 25, 'newQty': 20, 'type': 'remove', 'daysAgo': 2},
+      {'productId': 'P003', 'prevQty': 50, 'newQty': 40, 'type': 'remove', 'daysAgo': 2},
+      
+      // Day 7 - 1 day ago
+      {'productId': 'P001', 'prevQty': 35, 'newQty': 25, 'type': 'remove', 'daysAgo': 1},
+      {'productId': 'P004', 'prevQty': 30, 'newQty': 20, 'type': 'remove', 'daysAgo': 1},
+      
+      // Today
+      {'productId': 'P002', 'prevQty': 20, 'newQty': 15, 'type': 'remove', 'daysAgo': 0},
+      {'productId': 'P003', 'prevQty': 40, 'newQty': 35, 'type': 'remove', 'daysAgo': 0},
+    ];
+    
+    for (var movement in movements) {
+      final timestamp = now.subtract(Duration(days: movement['daysAgo'] as int));
+      await _repository.addStockMovement(
+        movement['productId'] as String,
+        movement['prevQty'] as int,
+        movement['newQty'] as int,
+        movement['type'] as String,
+        'Initial stock setup',
+        timestamp,
+      );
     }
   }
 }

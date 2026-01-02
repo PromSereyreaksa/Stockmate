@@ -165,6 +165,26 @@ class ProductsRepository {
       'timestamp': DateTime.now().toIso8601String(),
     });
   }
+  
+  // Add stock movement with custom timestamp (for seeding)
+  Future<void> addStockMovement(
+    String productId,
+    int previousQty,
+    int newQty,
+    String changeType,
+    String? reason,
+    DateTime? timestamp,
+  ) async {
+    final db = await _dbHelper.database;
+    await db.insert('stock_movements', {
+      'productId': productId,
+      'previousQty': previousQty,
+      'newQty': newQty,
+      'changeType': changeType,
+      'reason': reason,
+      'timestamp': (timestamp ?? DateTime.now()).toIso8601String(),
+    });
+  }
 
   // Get stock movement history for a product
   Future<List<Map<String, dynamic>>> getStockHistory(String productId) async {

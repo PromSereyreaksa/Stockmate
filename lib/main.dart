@@ -9,13 +9,13 @@ import 'data/data_seeder.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Seed initial data
-  print("Before seeding");
-  try{
+  // Seed initial data (only seeds if database is empty)
+  print("🌱 Checking data...");
+  try {
     await DataSeeder().seedInitialData();
-    print("After seeding");
-  }catch (e){
-    print("Seeding failed");
+    print("✅ Data ready!");
+  } catch (e) {
+    print("❌ Data seeding failed: $e");
   }
   
   // Locking this because running a mobile emulator lags alot 

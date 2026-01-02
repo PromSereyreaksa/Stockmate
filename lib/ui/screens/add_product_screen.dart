@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
+import 'dart:io';
 import '../../data/products_repository.dart';
 import '../../models/product.dart';
 
 class AddProductScreen extends StatefulWidget {
-  const AddProductScreen({super.key});
+  final Product? product;
+  
+  const AddProductScreen({super.key, this.product});
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
@@ -30,6 +37,29 @@ class _AddProductScreenState extends State<AddProductScreen> {
   int _quantity = 1;
   String? _imagePath;
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.product != null) {
+      _populateForm(widget.product!);
+    }
+  }
+
+  void _populateForm(Product product) {
+    _nameController.text = product.name;
+    _skuController.text = product.barcode;
+    _quantityController.text = product.currentQuantity.toString();
+    _costPriceController.text = product.costPrice.toStringAsFixed(2);
+    _sellingPriceController.text = product.sellingPrice.toStringAsFixed(2);
+    _minStockController.text = product.minStock.toString();
+    _descriptionController.text = product.description;
+    _brandController.text = product.brand;
+    _supplierController.text = product.supplier;
+    _selectedCategory = product.category;
+    _quantity = product.currentQuantity;
+    _imagePath = product.imagePath.isNotEmpty ? product.imagePath : null;
+  }
 
   @override
   void dispose() {
@@ -71,13 +101,102 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   Future<void> _pickImage() async {
-    // TODO: Implement image picker
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Image picker coming soon!'),
-        behavior: SnackBarBehavior.floating,
+    final bool isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+    
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            // Only show camera option on mobile devices
+            if (isMobile)
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take Photo'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final ImagePicker picker = ImagePicker();
+                  final XFile? image = await picker.pickImage(
+                    source: ImageSource.camera,
+                    maxWidth: 1024,
+                    maxHeight: 1024,
+                    imageQuality: 85,
+                    preferredCameraDevice: CameraDevice.rear,
+                  );
+                  if (image != null) {
+                    // Copy to permanent storage immediately
+                    final String permanentPath = await _copyImageToPermanentStorage(image.path);
+                    setState(() {
+                      _imagePath = permanentPath;
+                    });
+                  }
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: Text(isMobile ? 'Choose from Gallery' : 'Choose Image'),
+              onTap: () async {
+                Navigator.pop(context);
+                final ImagePicker picker = ImagePicker();
+                final XFile? image = await picker.pickImage(
+                  source: ImageSource.gallery,
+                  maxWidth: 1024,
+                  maxHeight: 1024,
+                  imageQuality: 85,
+                );
+                if (image != null) {
+                  // Copy to permanent storage immediately
+                  final String permanentPath = await _copyImageToPermanentStorage(image.path);
+                  setState(() {
+                    _imagePath = permanentPath;
+                  });
+                }
+              },
+            ),
+            if (_imagePath != null)
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Remove Photo', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _imagePath = null;
+                  });
+                },
+              ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<String> _copyImageToPermanentStorage(String tempPath) async {
+    try {
+      final File tempFile = File(tempPath);
+      if (!await tempFile.exists()) {
+        print('❌ Temp file does not exist: $tempPath');
+        return tempPath;
+      }
+
+      final Directory appDir = await getApplicationDocumentsDirectory();
+      final String imagesDir = '${appDir.path}/product_images';
+      await Directory(imagesDir).create(recursive: true);
+      
+      // Generate unique filename using timestamp
+      final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+      final String fileName = 'temp_$timestamp${path.extension(tempPath)}';
+      final String newPath = '$imagesDir/$fileName';
+      
+      await tempFile.copy(newPath);
+      print('✅ Image copied immediately to: $newPath');
+      return newPath;
+    } catch (e) {
+      print('❌ Error copying image immediately: $e');
+      return tempPath; // Return original path as fallback
+    }
   }
 
   Future<void> _saveProduct({bool isDraft = false}) async {
@@ -88,40 +207,82 @@ class _AddProductScreenState extends State<AddProductScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // Generate product ID
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final productId = 'P${timestamp.toString().substring(7)}';
+      final bool isEditing = widget.product != null;
+      
+      // Generate or use existing product ID
+      final String productId;
+      if (isEditing) {
+        productId = widget.product!.productId;
+      } else {
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        productId = 'P${timestamp.toString().substring(7)}';
+      }
 
       // Parse prices
       final costPrice = double.tryParse(_costPriceController.text) ?? 0.0;
       final sellingPrice = double.tryParse(_sellingPriceController.text) ?? 0.0;
       final minStock = int.tryParse(_minStockController.text) ?? 1;
 
-      // Create product
+      // Rename image file with product ID for better organization
+      String? savedImagePath = _imagePath;
+      if (_imagePath != null && !_imagePath!.startsWith('assets/') && _imagePath!.contains('product_images')) {
+        try {
+          // Rename temp file to use product ID
+          final File currentFile = File(_imagePath!);
+          if (await currentFile.exists()) {
+            final Directory appDir = await getApplicationDocumentsDirectory();
+            final String imagesDir = '${appDir.path}/product_images';
+            final String fileName = '${productId}${path.extension(_imagePath!)}';
+            final String newPath = '$imagesDir/$fileName';
+            
+            // Only rename if it's not already the correct name
+            if (_imagePath != newPath) {
+              await currentFile.rename(newPath);
+              savedImagePath = newPath;
+              print('✅ Image renamed to: $newPath');
+            }
+          }
+        } catch (e) {
+          print('❌ Error renaming image: $e');
+        }
+      }
+
+      // Create or update product
       final product = Product(
         productId: productId,
         name: _nameController.text.trim(),
-        description: _descriptionController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty 
+            ? 'No description' 
+            : _descriptionController.text.trim(),
         currentQuantity: _quantity,
-        expDate: DateTime.now().add(const Duration(days: 365)), // Default 1 year
+        expDate: isEditing ? widget.product!.expDate : DateTime.now().add(const Duration(days: 365)),
         stock: _quantity,
         minStock: minStock,
         costPrice: costPrice,
         sellingPrice: sellingPrice,
         barcode: _skuController.text.trim(),
-        brand: _brandController.text.trim(),
-        supplier: _supplierController.text.trim(),
-        imagePath: _imagePath ?? '',
+        brand: _brandController.text.trim().isEmpty 
+            ? 'Not provided' 
+            : _brandController.text.trim(),
+        supplier: _supplierController.text.trim().isEmpty 
+            ? 'Not provided' 
+            : _supplierController.text.trim(),
+        imagePath: savedImagePath ?? '',
         category: _selectedCategory,
       );
 
       // Save to database
-      await _repository.insertProduct(product);
+      if (isEditing) {
+        await _repository.updateProduct(product);
+      } else {
+        await _repository.insertProduct(product);
+      }
 
       if (mounted) {
+        final bool isEditing = widget.product != null;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isDraft ? 'Saved as draft' : 'Product added successfully!'),
+            content: Text(isEditing ? 'Product updated successfully!' : (isDraft ? 'Saved as draft' : 'Product added successfully!')),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -142,6 +303,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
         _selectedCategory = ProductsCategory.other;
         
         setState(() {});
+        
+        // If editing, return to previous screen
+        if (widget.product != null) {
+          Navigator.pop(context, true);
+        } else if (!isDraft) {
+          // Close the form after adding new product
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       print('Error saving product: $e');
@@ -166,19 +335,46 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: const Text(
-          'Add Stock Item',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        title: Text(
+          widget.product != null ? 'Edit Item' : 'Add Item',
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
-        actions: [
+        leading: widget.product != null ? IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ) : null,
+        actions: widget.product == null ? [
           IconButton(
-            onPressed: _isSaving ? null : () => _saveProduct(isDraft: false),
-            icon: const Icon(Icons.check),
+            onPressed: () {
+              // Clear the form when X is pressed (only for new products)
+              _nameController.clear();
+              _skuController.clear();
+              _quantityController.text = '1';
+              _costPriceController.text = '0.00';
+              _sellingPriceController.text = '0.00';
+              _minStockController.text = '1';
+              _descriptionController.clear();
+              _brandController.clear();
+              _supplierController.clear();
+              _imagePath = null;
+              _quantity = 1;
+              _selectedCategory = ProductsCategory.other;
+              setState(() {});
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Form cleared'),
+                  behavior: SnackBarBehavior.floating,
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            },
+            icon: const Icon(Icons.refresh),
           ),
-        ],
+        ] : null,
       ),
       body: Form(
         key: _formKey,
@@ -195,13 +391,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   children: [
                     GestureDetector(
                       onTap: _pickImage,
-                      child: Container(
-                        width: double.infinity,
-                        height: 150,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      child: AspectRatio(
+                        aspectRatio: 1.0,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         child: _imagePath == null
                             ? Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -223,11 +419,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
                               )
                             : ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.asset(
-                                  _imagePath!,
-                                  fit: BoxFit.cover,
-                                ),
+                                child: _imagePath!.startsWith('assets/')
+                                    ? Image.asset(
+                                        _imagePath!,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Image.file(
+                                        File(_imagePath!),
+                                        fit: BoxFit.cover,
+                                      ),
                               ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -253,7 +455,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   children: [
                     // Product Name
                     const Text(
-                      'Product Name',
+                      'Product Name *',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -286,7 +488,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
                     // SKU/Barcode
                     const Text(
-                      'SKU/Barcode',
+                      'SKU/Barcode (Optional)',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -430,7 +632,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Cost Price',
+                                'Cost Price (Optional)',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
@@ -458,7 +660,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Selling Price',
+                                'Selling Price (Optional)',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
@@ -509,7 +711,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
                     // Brand
                     const Text(
-                      'Brand',
+                      'Brand (Optional)',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -531,7 +733,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
                     // Supplier
                     const Text(
-                      'Supplier',
+                      'Supplier (Optional)',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -572,86 +774,45 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         contentPadding: const EdgeInsets.all(12),
                       ),
                     ),
+                    const SizedBox(height: 24),
+
+                    // Add to Stock Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : () => _saveProduct(isDraft: false),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : Text(
+                                widget.product != null ? 'Update Item' : 'Add to Stock',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 100), // Space for bottom buttons
-            ],
-          ),
-        ),
-      ),
-
-      // Bottom Action Buttons
-      bottomSheet: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : () => _saveProduct(isDraft: false),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isSaving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text(
-                          'Add to Stock',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: _isSaving ? null : () => _saveProduct(isDraft: true),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: Colors.grey.shade300),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    foregroundColor: Colors.black87,
-                  ),
-                  child: const Text(
-                    'Save as Draft',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),

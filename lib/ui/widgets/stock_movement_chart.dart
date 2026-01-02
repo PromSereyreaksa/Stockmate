@@ -35,6 +35,11 @@ class StockMovementChart extends StatelessWidget {
       if (item.stockOut > maxValue) maxValue = item.stockOut;
     }
     maxValue = (maxValue * 1.2).ceil(); // Add 20% padding
+    
+    // Ensure maxValue is at least 4 to avoid division issues
+    if (maxValue < 4) maxValue = 4;
+    
+    final double interval = maxValue / 4.0;
 
     return Column(
       children: [
@@ -45,7 +50,7 @@ class StockMovementChart extends StatelessWidget {
               gridData: FlGridData(
                 show: true,
                 drawVerticalLine: false,
-                horizontalInterval: maxValue / 4,
+                horizontalInterval: interval,
                 getDrawingHorizontalLine: (value) {
                   return FlLine(
                     color: Colors.grey.withValues(alpha: 0.1),
@@ -58,7 +63,7 @@ class StockMovementChart extends StatelessWidget {
                   sideTitles: SideTitles(
                     showTitles: true,
                     reservedSize: 40,
-                    interval: maxValue / 4,
+                    interval: interval,
                     getTitlesWidget: (value, meta) {
                       return Text(
                         value.toInt().toString(),
@@ -185,7 +190,6 @@ class StockMovementChart extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        // Legend
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

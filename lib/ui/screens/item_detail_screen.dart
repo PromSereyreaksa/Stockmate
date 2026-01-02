@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
 import '../../data/products_repository.dart';
 import '../../models/product.dart';
 import '../widgets/info_row.dart';
 import '../widgets/activity_item.dart';
 import '../dialogs/add_stock_dialog.dart';
+import 'add_product_screen.dart';
 
 class ItemDetailScreen extends StatefulWidget {
   final String productId;
@@ -77,24 +79,23 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     );
   }
 
-  void _navigateToEdit() {
-    // TODO: Navigate to edit screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Edit screen coming soon!'),
-        behavior: SnackBarBehavior.floating,
+  void _navigateToEdit() async {
+    if (_product == null) return;
+    
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddProductScreen(product: _product),
       ),
     );
-  }
-
-  void _showReports() {
-    // TODO: Show detailed reports
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Reports screen coming soon!'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    
+    // Reload data if product was updated and notify parent
+    if (result == true) {
+      await _loadData();
+      if (mounted) {
+        Navigator.pop(context, true); // Return true to parent to trigger refresh
+      }
+    }
   }
 
   @override
@@ -160,17 +161,29 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     height: 250,
                     color: Colors.grey.shade100,
                     child: product.imagePath.isNotEmpty
-                        ? Image.asset(
-                            product.imagePath,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(
-                                Icons.inventory_2_outlined,
-                                size: 80,
-                                color: Colors.grey.shade400,
-                              );
-                            },
-                          )
+                        ? (product.imagePath.startsWith('assets/')
+                            ? Image.asset(
+                                product.imagePath,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.inventory_2_outlined,
+                                    size: 80,
+                                    color: Colors.grey.shade400,
+                                  );
+                                },
+                              )
+                            : Image.file(
+                                File(product.imagePath),
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.inventory_2_outlined,
+                                    size: 80,
+                                    color: Colors.grey.shade400,
+                                  );
+                                },
+                              ))
                         : Icon(
                             Icons.inventory_2_outlined,
                             size: 80,
@@ -430,41 +443,22 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Edit & Reports Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _navigateToEdit,
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                      label: const Text('Edit Item'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: Colors.grey.shade300),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        foregroundColor: Colors.black87,
-                      ),
+              // Edit Button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _navigateToEdit,
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  label: const Text('Edit Item'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: BorderSide(color: Colors.grey.shade300),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    foregroundColor: Colors.black87,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _showReports,
-                      icon: const Icon(Icons.bar_chart, size: 20),
-                      label: const Text('Reports'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: Colors.grey.shade300),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        foregroundColor: Colors.black87,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
