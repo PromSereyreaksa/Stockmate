@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
 import '../../data/products_repository.dart';
 import '../../models/product.dart';
-import '../../utils/stock_status.dart';
+import '../widgets/product_card.dart';
+import '../widgets/product_filter.dart';
 import 'item_detail_screen.dart';
 
-enum ProductFilter { all, inStock, lowStock, outOfStock }
+enum StockFilterType { all, inStock, lowStock, outOfStock }
 
 enum SortOption { name, price, stock }
 
@@ -30,7 +30,7 @@ class _ProductListScreenState extends State<ProductListScreen>
   List<Product> _filteredProducts = [];
   bool _isLoading = true;
 
-  ProductFilter _currentFilter = ProductFilter.all;
+  StockFilterType _currentFilter = StockFilterType.all;
   SortOption _currentSort = SortOption.name;
   String _searchQuery = '';
 
@@ -52,7 +52,7 @@ class _ProductListScreenState extends State<ProductListScreen>
 
   void _onSearchChanged() {
     setState(() {
-      _searchQuery = _searchController.text.toLowerCase();
+      _searchQuery = _searchController.text.trim().toLowerCase();
       _applyFilters();
     });
   }
@@ -82,30 +82,30 @@ class _ProductListScreenState extends State<ProductListScreen>
     // filtered products based on the search query
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((product) {
-        return product.name.toLowerCase().contains(_searchQuery) ||
-            product.category.name.toLowerCase().contains(_searchQuery) ||
-            product.brand.toLowerCase().contains(_searchQuery);
+        return product.name
+            .toLowerCase()
+            .contains(_searchQuery);
       }).toList();
     }
 
     switch (_currentFilter) {
-      case ProductFilter.inStock:
+      case StockFilterType.inStock:
         filtered = filtered
             .where((p) => !p.isLowStock && !p.isOutOfStock)
             .toList();
         break;
 
-      case ProductFilter.lowStock:
+      case StockFilterType.lowStock:
         filtered = filtered
             .where((p) => p.isLowStock && !p.isOutOfStock)
             .toList();
         break;
 
-      case ProductFilter.outOfStock:
+      case StockFilterType.outOfStock:
         filtered = filtered.where((p) => p.isOutOfStock).toList();
         break;
 
-      case ProductFilter.all:
+      case StockFilterType.all:
         // no filter anything if "All" is selected
         break;
     }
@@ -191,43 +191,6 @@ class _ProductListScreenState extends State<ProductListScreen>
     );
   }
 
-  String _getStockStatus(Product product) {
-    if (product.isOutOfStock) return 'Out of stock';
-    if (product.isLowStock) return 'Low stock';
-    return '${product.currentQuantity} in stock';
-  }
-
-  Color _getStockColor(Product product) {
-    return StockStatus.fromProduct(product).color;
-  }
-
-  String _formatCategoryName(ProductsCategory category) {
-    switch (category) {
-      case ProductsCategory.rice:
-        return 'Rice';
-      case ProductsCategory.noodles:
-        return 'Noodles';
-      case ProductsCategory.snacks:
-        return 'Snacks';
-      case ProductsCategory.beverages:
-        return 'Beverages';
-      case ProductsCategory.condiments:
-        return 'Condiments';
-      case ProductsCategory.cannedGoods:
-        return 'Canned Goods';
-      case ProductsCategory.dairy:
-        return 'Dairy';
-      case ProductsCategory.frozen:
-        return 'Frozen';
-      case ProductsCategory.bakery:
-        return 'Bakery';
-      case ProductsCategory.household:
-        return 'Household';
-      case ProductsCategory.other:
-        return 'Other';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
@@ -283,13 +246,49 @@ class _ProductListScreenState extends State<ProductListScreen>
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _buildFilterChip('All Items', ProductFilter.all),
+                ProductFilter(
+                  label: 'All Items',
+                  isSelected: _currentFilter == StockFilterType.all,
+                  onTap: () {
+                    setState(() {
+                      _currentFilter = StockFilterType.all;
+                      _applyFilters();
+                    });
+                  },
+                ),
                 const SizedBox(width: 8),
-                _buildFilterChip('In Stock', ProductFilter.inStock),
+                ProductFilter(
+                  label: 'In Stock',
+                  isSelected: _currentFilter == StockFilterType.inStock,
+                  onTap: () {
+                    setState(() {
+                      _currentFilter = StockFilterType.inStock;
+                      _applyFilters();
+                    });
+                  },
+                ),
                 const SizedBox(width: 8),
-                _buildFilterChip('Low Stock', ProductFilter.lowStock),
+                ProductFilter(
+                  label: 'Low Stock',
+                  isSelected: _currentFilter == StockFilterType.lowStock,
+                  onTap: () {
+                    setState(() {
+                      _currentFilter = StockFilterType.lowStock;
+                      _applyFilters();
+                    });
+                  },
+                ),
                 const SizedBox(width: 8),
-                _buildFilterChip('Out of Stock', ProductFilter.outOfStock),
+                ProductFilter(
+                  label: 'Out of Stock',
+                  isSelected: _currentFilter == StockFilterType.outOfStock,
+                  onTap: () {
+                    setState(() {
+                      _currentFilter = StockFilterType.outOfStock;
+                      _applyFilters();
+                    });
+                  },
+                ),
               ],
             ),
           ),
@@ -408,7 +407,22 @@ class _ProductListScreenState extends State<ProductListScreen>
                             ],
                           ),
                         ),
-                        child: _buildProductCard(product),
+                        child: ProductCard(
+                          product: product,
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ItemDetailScreen(
+                                  productId: product.productId,
+                                ),
+                              ),
+                            );
+                            if (result == true) {
+                              _loadProducts();
+                            }
+                          },
+                        ),
                       );
                     },
                   ),
@@ -418,164 +432,5 @@ class _ProductListScreenState extends State<ProductListScreen>
     );
   }
 
-  Widget _buildFilterChip(String label, ProductFilter filter) {
-    final isSelected = _currentFilter == filter;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentFilter = filter;
-          _applyFilters();
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue : Colors.grey[100],
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black87,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProductCard(Product product) {
-    return GestureDetector(
-      onTap: () async {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                ItemDetailScreen(productId: product.productId),
-          ),
-        );
-        // Reload products if item was edited
-        if (result == true) {
-          _loadProducts();
-        }
-      },
-
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[200]!),
-        ),
-        child: Row(
-          children: [
-            // Product Image
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: product.imagePath.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child:
-                          product.imagePath.startsWith(
-                            'assets/',
-                          ) // use ths bcs i need to use the seeded data in asset foldrs
-                          ? Image.asset(
-                              //
-                              product.imagePath,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Icon(
-                                    Icons.inventory_2_outlined,
-                                    color: Colors.grey[400],
-                                    size: 30,
-                                  ),
-                            )
-                          : Image.file(
-                              // then after like the image user take or pick → uses Image.file
-                              File(product.imagePath),
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Icon(
-                                    Icons.inventory_2_outlined,
-                                    color: Colors.grey[400],
-                                    size: 30,
-                                  ),
-                            ),
-                    )
-                  : Icon(
-                      Icons.inventory_2_outlined,
-                      color: Colors.grey[400],
-                      size: 30,
-                    ),
-            ),
-            const SizedBox(width: 12),
-            // Product Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _formatCategoryName(product.category),
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '\$${product.sellingPrice.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: _getStockColor(product),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _getStockStatus(product),
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  
 }

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'dart:io';
 import '/data/products_repository.dart';
 import '/models/product.dart';
 import '/models/statistic.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/stock_movement_chart.dart';
+import '../widgets/product_card.dart';
+import '../widgets/product_filter.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -232,13 +233,29 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
                         children: [
-                          _buildFilterChip('All Items'),
+                          ProductFilter(
+                            label: 'All Items',
+                            isSelected: _selectedFilter == 'All Items',
+                            onTap: () => _applyFilter('All Items'),
+                          ),
                           const SizedBox(width: 8),
-                          _buildFilterChip('Low Stock'),
+                          ProductFilter(
+                            label: 'Low Stock',
+                            isSelected: _selectedFilter == 'Low Stock',
+                            onTap: () => _applyFilter('Low Stock'),
+                          ),
                           const SizedBox(width: 8),
-                          _buildFilterChip('Out of Stock'),
+                          ProductFilter(
+                            label: 'Out of Stock',
+                            isSelected: _selectedFilter == 'Out of Stock',
+                            onTap: () => _applyFilter('Out of Stock'),
+                          ),
                           const SizedBox(width: 8),
-                          _buildFilterChip('Categories'),
+                          ProductFilter(
+                            label: 'Categories',
+                            isSelected: _selectedFilter == 'Categories',
+                            onTap: () => _applyFilter('Categories'),
+                          ),
                         ],
                       ),
                     ),
@@ -254,7 +271,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
+                            color: Colors.black.withValues(alpha: 0.04),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -357,7 +374,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         itemCount: _filteredProducts.length,
                         itemBuilder: (context, index) {
                           final product = _filteredProducts[index];
-                          return _buildProductCard(product);
+                          return ProductCard(product: product);
                         },
                       ),
                     ] else if (!_isLoading) ...[
@@ -388,187 +405,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ),
               ),
             ),
-    );
-  }
-
-  Widget _buildFilterChip(String label) {
-    final isSelected = _selectedFilter == label;
-    return GestureDetector(
-      onTap: () => _applyFilter(label),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? Colors.blue : Colors.grey.shade300,
-            width: 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [],
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected ? Colors.white : Colors.black87,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProductCard(Product product) {
-    Color statusColor = Colors.green;
-    String statusText = 'In Stock';
-
-    if (product.isOutOfStock) {
-      statusColor = Colors.red;
-      statusText = 'Out of Stock';
-    } else if (product.isLowStock) {
-      statusColor = Colors.orange;
-      statusText = 'Low Stock';
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Product Image
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: product.imagePath.isNotEmpty
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: product.imagePath.startsWith('assets/')
-                        ? Image.asset(
-                            product.imagePath,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(
-                                Icons.inventory_2_outlined,
-                                color: Colors.grey.shade400,
-                              );
-                            },
-                          )
-                        : Image.file(
-                            File(product.imagePath),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(
-                                Icons.inventory_2_outlined,
-                                color: Colors.grey.shade400,
-                              );
-                            },
-                          ),
-                  )
-                : Icon(
-                    Icons.inventory_2_outlined,
-                    color: Colors.grey.shade400,
-                  ),
-          ),
-          const SizedBox(width: 12),
-
-          // Product Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  product.brand,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        statusText,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: statusColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Stock: ${product.currentQuantity}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Category Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              product.category.name,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.blue,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

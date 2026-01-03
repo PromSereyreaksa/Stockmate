@@ -6,6 +6,7 @@ import '../../models/product.dart';
 import '../../utils/stock_status.dart';
 import '../widgets/info_row.dart';
 import '../widgets/activity_item.dart';
+import '../widgets/product_card.dart';
 import '../dialogs/add_stock_dialog.dart';
 import 'add_product_screen.dart';
 
@@ -62,12 +63,14 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         productName: _product!.name,
         currentStock: _product!.currentQuantity,
         onAdd: (quantity, reason) async {
+          // Capture messenger before async gap
+          final messenger = ScaffoldMessenger.of(context);
           final newQuantity = _product!.currentQuantity + quantity;
           await _repository.updateStock(_product!.productId, newQuantity);
-          _loadData();
+          await _loadData();
           
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            messenger.showSnackBar(
               SnackBar(
                 content: Text('Added $quantity units to stock'),
                 backgroundColor: Colors.green,
@@ -212,7 +215,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.1),
+                            color: statusColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -275,7 +278,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   ),
                   InfoRow(
                     label: 'Category',
-                    value: _formatCategory(product.category),
+                    value: ProductCard.formatCategoryName(product.category),
                   ),
                   InfoRow(
                     label: 'Brand',
@@ -491,10 +494,5 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         ],
       ),
     );
-  }
-
-  String _formatCategory(ProductsCategory category) {
-    final name = category.name;
-    return name[0].toUpperCase() + name.substring(1);
   }
 }
