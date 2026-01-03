@@ -30,7 +30,14 @@ class _MainNavigationState extends State<MainNavigation> {
       body: IndexedStack(
         index: _currentTab.index,
         children: [
-          HomeScreen(key: ValueKey('home_$_refreshKey')),
+          HomeScreen(
+            key: ValueKey('home_$_refreshKey'),
+            onNavigateToItems: () {
+              setState(() {
+                _currentTab = Tab.items;
+              });
+            },
+          ),
           ProductListScreen(key: ValueKey('products_$_refreshKey')),
           AddProductScreen(
             onProductAdded: () {

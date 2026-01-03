@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import '../../data/products_repository.dart';
 import '../../models/product.dart';
+import '../../utils/stock_status.dart';
 import '../widgets/info_row.dart';
 import '../widgets/activity_item.dart';
 import '../dialogs/add_stock_dialog.dart';
@@ -116,18 +117,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     final product = _product!;
     
     // Determine status
-    Color statusColor;
-    String statusText;
-    if (product.isOutOfStock) {
-      statusColor = Colors.red;
-      statusText = 'Out of Stock';
-    } else if (product.isLowStock) {
-      statusColor = Colors.orange;
-      statusText = 'Low Stock';
-    } else {
-      statusColor = Colors.green;
-      statusText = 'In Stock';
-    }
+    final stockStatus = StockStatus.fromProduct(product);
+    final statusColor = stockStatus.color;
+    final statusText = stockStatus.displayText;
 
     // Activity list (limit to 3 if not showing all)
     final displayedActivity = _showAllActivity 

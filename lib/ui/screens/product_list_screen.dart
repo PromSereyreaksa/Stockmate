@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import '../../data/products_repository.dart';
 import '../../models/product.dart';
+import '../../utils/stock_status.dart';
 import 'item_detail_screen.dart';
 
 enum ProductFilter { all, inStock, lowStock, outOfStock }
@@ -16,7 +17,12 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen>
-    with AutomaticKeepAliveClientMixin {
+        // Keeps this screen alive when switching tabs/pages
+        // so search text, filters, sorting, scroll position,
+        // and loaded products are not reset.
+        with
+        AutomaticKeepAliveClientMixin {
+  // i need to keep filter/search/sort state when switching tabs
   final ProductsRepository _repository = ProductsRepository();
   final TextEditingController _searchController = TextEditingController();
 
@@ -51,22 +57,29 @@ class _ProductListScreenState extends State<ProductListScreen>
     });
   }
 
+  // Load all products from repository and update UI
   Future<void> _loadProducts() async {
+    // I show a loading indicator while fetching data
     setState(() => _isLoading = true);
 
+    // I fetch all products from the repository (database/storage)
     final products = await _repository.getAllProducts();
 
     setState(() {
+      // I remove deleted products from the list
       _allProducts = products.where((p) => !p.isDeleted).toList();
+
       _applyFilters();
+
       _isLoading = false;
     });
   }
 
+  // Apply search, filter, and sorting logic to products
   void _applyFilters() {
     List<Product> filtered = List.from(_allProducts);
 
-    // Apply search filter
+    // filtered products based on the search query
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((product) {
         return product.name.toLowerCase().contains(_searchQuery) ||
@@ -75,46 +88,57 @@ class _ProductListScreenState extends State<ProductListScreen>
       }).toList();
     }
 
-    // Apply stock filter
     switch (_currentFilter) {
       case ProductFilter.inStock:
         filtered = filtered
             .where((p) => !p.isLowStock && !p.isOutOfStock)
             .toList();
         break;
+
       case ProductFilter.lowStock:
         filtered = filtered
             .where((p) => p.isLowStock && !p.isOutOfStock)
             .toList();
         break;
+
       case ProductFilter.outOfStock:
         filtered = filtered.where((p) => p.isOutOfStock).toList();
         break;
+
       case ProductFilter.all:
+        // no filter anything if "All" is selected
         break;
     }
 
-    // Apply sorting
     switch (_currentSort) {
       case SortOption.name:
         filtered.sort((a, b) => a.name.compareTo(b.name));
         break;
+
       case SortOption.price:
         filtered.sort((a, b) => a.sellingPrice.compareTo(b.sellingPrice));
         break;
+
       case SortOption.stock:
         filtered.sort((a, b) => b.currentQuantity.compareTo(a.currentQuantity));
         break;
     }
 
+    // update the UI with the filtered and sorted products
     setState(() {
       _filteredProducts = filtered;
     });
   }
 
   Future<void> _deleteProduct(Product product) async {
+    // delete the product from the repository using its ID
     await _repository.deleteProduct(product.productId);
+
+    // calling loadProducts to reload the product list after deletion
     _loadProducts();
+
+    // sure the widget is still mounted before showing a message
+    // Only show the message if still on this screen.
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -174,9 +198,7 @@ class _ProductListScreenState extends State<ProductListScreen>
   }
 
   Color _getStockColor(Product product) {
-    if (product.isOutOfStock) return Colors.red;
-    if (product.isLowStock) return Colors.orange;
-    return Colors.green;
+    return StockStatus.fromProduct(product).color;
   }
 
   String _formatCategoryName(ProductsCategory category) {
@@ -235,6 +257,7 @@ class _ProductListScreenState extends State<ProductListScreen>
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
+              // TextField so slightly better for performance, don't need any validation so textfield is fine
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search products...',
@@ -340,15 +363,21 @@ class _ProductListScreenState extends State<ProductListScreen>
                             context: context,
                             builder: (context) => AlertDialog(
                               title: const Text('Delete Product'),
-                              content: Text('Are you sure you want to delete ${product.name}?'),
+                              content: Text(
+                                'Are you sure you want to delete ${product.name}?',
+                              ),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
                                   child: const Text('Cancel'),
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                  child: const Text(
+                                    'Delete',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
                                 ),
                               ],
                             ),
@@ -422,15 +451,16 @@ class _ProductListScreenState extends State<ProductListScreen>
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ItemDetailScreen(productId: product.productId),
+            builder: (context) =>
+                ItemDetailScreen(productId: product.productId),
           ),
         );
-        
         // Reload products if item was edited
         if (result == true) {
           _loadProducts();
         }
       },
+
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),
@@ -441,104 +471,110 @@ class _ProductListScreenState extends State<ProductListScreen>
         ),
         child: Row(
           children: [
-          // Product Image
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(8),
+            // Product Image
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: product.imagePath.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child:
+                          product.imagePath.startsWith(
+                            'assets/',
+                          ) // use ths bcs i need to use the seeded data in asset foldrs
+                          ? Image.asset(
+                              //
+                              product.imagePath,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Icon(
+                                    Icons.inventory_2_outlined,
+                                    color: Colors.grey[400],
+                                    size: 30,
+                                  ),
+                            )
+                          : Image.file(
+                              // then after like the image user take or pick → uses Image.file
+                              File(product.imagePath),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Icon(
+                                    Icons.inventory_2_outlined,
+                                    color: Colors.grey[400],
+                                    size: 30,
+                                  ),
+                            ),
+                    )
+                  : Icon(
+                      Icons.inventory_2_outlined,
+                      color: Colors.grey[400],
+                      size: 30,
+                    ),
             ),
-            child: product.imagePath.isNotEmpty
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: product.imagePath.startsWith('assets/')
-                        ? Image.asset(
-                            product.imagePath,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Icon(
-                              Icons.inventory_2_outlined,
-                              color: Colors.grey[400],
-                              size: 30,
-                            ),
-                          )
-                        : Image.file(
-                            File(product.imagePath),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Icon(
-                              Icons.inventory_2_outlined,
-                              color: Colors.grey[400],
-                              size: 30,
-                            ),
-                          ),
-                  )
-                : Icon(
-                    Icons.inventory_2_outlined,
-                    color: Colors.grey[400],
-                    size: 30,
+            const SizedBox(width: 12),
+            // Product Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-          ),
-          const SizedBox(width: 12),
-
-          // Product Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatCategoryName(product.category),
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatCategoryName(product.category),
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '\$${product.sellingPrice.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '\$${product.sellingPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _getStockColor(product),
-                            shape: BoxShape.circle,
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: _getStockColor(product),
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _getStockStatus(product),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
+                          const SizedBox(width: 6),
+                          Text(
+                            _getStockStatus(product),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }

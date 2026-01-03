@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../../models/product.dart';
+import '../../utils/stock_status.dart';
 import '../screens/item_detail_screen.dart';
 
 class StockAlertCard extends StatelessWidget {
@@ -16,7 +17,7 @@ class StockAlertCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOutOfStock = product.isOutOfStock;
-    final borderColor = isOutOfStock ? Colors.red : Colors.orange;
+    final borderColor = StockStatus.fromProduct(product).color;
     final subtitle = isOutOfStock
         ? '0 left'
         : 'Only ${product.currentQuantity} left';
