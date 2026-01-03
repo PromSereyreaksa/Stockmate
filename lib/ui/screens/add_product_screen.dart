@@ -10,8 +10,9 @@ import '../../models/product.dart';
 
 class AddProductScreen extends StatefulWidget {
   final Product? product;
+  final VoidCallback? onProductAdded;
   
-  const AddProductScreen({super.key, this.product});
+  const AddProductScreen({super.key, this.product, this.onProductAdded});
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
@@ -199,8 +200,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  Future<void> _saveProduct({bool isDraft = false}) async {
-    if (!isDraft && !_formKey.currentState!.validate()) {
+  Future<void> _saveProduct() async {
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
@@ -237,9 +238,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
             
             // Only rename if it's not already the correct name
             if (_imagePath != newPath) {
-              await currentFile.rename(newPath);
+              await currentFile.copy(newPath);
               savedImagePath = newPath;
-              print('✅ Image renamed to: $newPath');
+              print('✅ Image copy to: $newPath');
             }
           }
         } catch (e) {
@@ -282,7 +283,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         final bool isEditing = widget.product != null;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isEditing ? 'Product updated successfully!' : (isDraft ? 'Saved as draft' : 'Product added successfully!')),
+            content: Text(isEditing ? 'Product updated successfully!' : 'Product added successfully!'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -304,12 +305,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
         
         setState(() {});
         
-        // If editing, return to previous screen
-        if (widget.product != null) {
+        // Return to product list or trigger navigation to items tab
+        if (isEditing) {
           Navigator.pop(context, true);
-        } else if (!isDraft) {
-          // Close the form after adding new product
-          Navigator.pop(context, true);
+        } else {
+          // Call callback to switch to items tab and see newly added product
+          // Add small delay to avoid graphics context issues
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              widget.onProductAdded?.call();
+            }
+          });
         }
       }
     } catch (e) {
@@ -780,7 +786,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _isSaving ? null : () => _saveProduct(isDraft: false),
+                        onPressed: _isSaving ? null : () => _saveProduct(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
                           padding: const EdgeInsets.symmetric(vertical: 16),

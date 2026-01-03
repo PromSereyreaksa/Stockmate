@@ -32,7 +32,14 @@ class _MainNavigationState extends State<MainNavigation> {
         children: [
           HomeScreen(key: ValueKey('home_$_refreshKey')),
           ProductListScreen(key: ValueKey('products_$_refreshKey')),
-          AddProductScreen(),
+          AddProductScreen(
+            onProductAdded: () {
+              setState(() {
+                _currentTab = Tab.items;
+              });
+              _refreshScreens();
+            },
+          ),
           AnalyticsScreen(key: ValueKey('analytics_$_refreshKey')),
         ],
       ),
