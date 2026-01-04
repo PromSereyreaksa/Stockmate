@@ -9,7 +9,7 @@ enum ProductsCategory {
   frozen,
   bakery,
   household,
-  other
+  other,
 }
 
 class Product {
@@ -49,8 +49,8 @@ class Product {
     this.isDeleted = false,
     DateTime? createdAt,
     DateTime? updatedAt,
-  })  : createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now();
+  }) : createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? DateTime.now();
 
   // Computed properties
   bool get isLowStock => currentQuantity <= minStock;
@@ -59,6 +59,9 @@ class Product {
   double get profitMargin => sellingPrice - costPrice;
 
   // Convert Product to Map for database
+  // beause Sqlite cannot store dart object so i have to convert these to Map inorder to store it
+  // vice versa when fetching from database
+
   Map<String, dynamic> toMap() {
     return {
       'productId': productId,

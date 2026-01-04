@@ -13,10 +13,7 @@ import 'add_product_screen.dart';
 class ItemDetailScreen extends StatefulWidget {
   final String productId;
 
-  const ItemDetailScreen({
-    super.key,
-    required this.productId,
-  });
+  const ItemDetailScreen({super.key, required this.productId});
 
   @override
   State<ItemDetailScreen> createState() => _ItemDetailScreenState();
@@ -24,7 +21,7 @@ class ItemDetailScreen extends StatefulWidget {
 
 class _ItemDetailScreenState extends State<ItemDetailScreen> {
   final ProductsRepository _repository = ProductsRepository();
-  
+
   Product? _product;
   List<Map<String, dynamic>> _recentActivity = [];
   bool _isLoading = true;
@@ -49,7 +46,6 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading product details: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -59,25 +55,25 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
     await showDialog(
       context: context,
-      builder: (context) => AddStockDialog(
+      builder: (dialogContext) => AddStockDialog(
         productName: _product!.name,
         currentStock: _product!.currentQuantity,
         onAdd: (quantity, reason) async {
-          // Capture messenger before async gap
           final messenger = ScaffoldMessenger.of(context);
+
           final newQuantity = _product!.currentQuantity + quantity;
           await _repository.updateStock(_product!.productId, newQuantity);
-          await _loadData();
-          
-          if (mounted) {
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text('Added $quantity units to stock'),
-                backgroundColor: Colors.green,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
+          _loadData();
+
+          if (!mounted) return;
+
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Added $quantity units to stock'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         },
       ),
     );
@@ -85,19 +81,22 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
   void _navigateToEdit() async {
     if (_product == null) return;
-    
+
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddProductScreen(product: _product),
       ),
     );
-    
+
     // Reload data if product was updated and notify parent
     if (result == true) {
       await _loadData();
       if (mounted) {
-        Navigator.pop(context, true); // Return true to parent to trigger refresh
+        Navigator.pop(
+          context,
+          true,
+        ); // Return true to parent to trigger refresh
       }
     }
   }
@@ -118,15 +117,15 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     }
 
     final product = _product!;
-    
+
     // Determine status
     final stockStatus = StockStatus.fromProduct(product);
     final statusColor = stockStatus.color;
     final statusText = stockStatus.displayText;
 
     // Activity list (limit to 3 if not showing all)
-    final displayedActivity = _showAllActivity 
-        ? _recentActivity 
+    final displayedActivity = _showAllActivity
+        ? _recentActivity
         : _recentActivity.take(3).toList();
 
     return Scaffold(
@@ -157,35 +156,35 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     color: Colors.grey.shade100,
                     child: product.imagePath.isNotEmpty
                         ? (product.imagePath.startsWith('assets/')
-                            ? Image.asset(
-                                product.imagePath,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.inventory_2_outlined,
-                                    size: 80,
-                                    color: Colors.grey.shade400,
-                                  );
-                                },
-                              )
-                            : Image.file(
-                                File(product.imagePath),
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.inventory_2_outlined,
-                                    size: 80,
-                                    color: Colors.grey.shade400,
-                                  );
-                                },
-                              ))
+                              ? Image.asset(
+                                  product.imagePath,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
+                                      Icons.inventory_2_outlined,
+                                      size: 80,
+                                      color: Colors.grey.shade400,
+                                    );
+                                  },
+                                )
+                              : Image.file(
+                                  File(product.imagePath),
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
+                                      Icons.inventory_2_outlined,
+                                      size: 80,
+                                      color: Colors.grey.shade400,
+                                    );
+                                  },
+                                ))
                         : Icon(
                             Icons.inventory_2_outlined,
                             size: 80,
                             color: Colors.grey.shade400,
                           ),
                   ),
-                  
+
                   // Product Name & Status
                   Padding(
                     padding: const EdgeInsets.all(16),
@@ -280,10 +279,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     label: 'Category',
                     value: ProductCard.formatCategoryName(product.category),
                   ),
-                  InfoRow(
-                    label: 'Brand',
-                    value: product.brand,
-                  ),
+                  InfoRow(label: 'Brand', value: product.brand),
                   InfoRow(
                     label: 'Cost Price',
                     value: '\$${product.costPrice.toStringAsFixed(2)}',
@@ -292,14 +288,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     label: 'Selling Price',
                     value: '\$${product.sellingPrice.toStringAsFixed(2)}',
                   ),
-                  InfoRow(
-                    label: 'Supplier',
-                    value: product.supplier,
-                  ),
-                  InfoRow(
-                    label: 'Barcode',
-                    value: product.barcode,
-                  ),
+                  InfoRow(label: 'Supplier', value: product.supplier),
+                  InfoRow(label: 'Barcode', value: product.barcode),
                   InfoRow(
                     label: 'Exp Date',
                     value: DateFormat('MMM dd, yyyy').format(product.expDate),
@@ -347,7 +337,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  
+
                   if (displayedActivity.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 24),
@@ -468,19 +458,13 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Column(
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade700,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
           ),
           const SizedBox(height: 4),
           Text(
