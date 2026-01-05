@@ -51,7 +51,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading analytics: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -83,7 +82,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         if (timestamp.isAfter(startDate)) {
           final dateKey = DateFormat('yyyy-MM-dd').format(timestamp);
           final changeType = movement['changeType'] as String;
-          final change = (movement['newQty'] as int) - (movement['previousQty'] as int);
+          final change =
+              (movement['newQty'] as int) - (movement['previousQty'] as int);
 
           if (changeType == 'add' && change > 0) {
             dailyIn[dateKey] = (dailyIn[dateKey] ?? 0) + change;
@@ -101,11 +101,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     for (int i = 0; i < days; i++) {
       final date = startDate.add(Duration(days: i));
       final dateKey = DateFormat('yyyy-MM-dd').format(date);
-      dailyData.add(StockMovementData(
-        date: date,
-        stockIn: dailyIn[dateKey] ?? 0,
-        stockOut: dailyOut[dateKey] ?? 0,
-      ));
+      dailyData.add(
+        StockMovementData(
+          date: date,
+          stockIn: dailyIn[dateKey] ?? 0,
+          stockOut: dailyOut[dateKey] ?? 0,
+        ),
+      );
     }
 
     return StockMovementSummary(
@@ -159,21 +161,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       appBar: AppBar(
         title: const Text(
           'Stock Statistics',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.black87),
-            onPressed: () {
-              // TODO: Show notifications
-            },
-          ),
-        ],
       ),
       body: _isLoading && _statistics == null
           ? const Center(child: CircularProgressIndicator())
@@ -211,13 +202,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                           ),
                           StatCard(
                             label: 'Out',
-                            value: _statistics?.outOfStockCount.toString() ?? '0',
+                            value:
+                                _statistics?.outOfStockCount.toString() ?? '0',
                             icon: Icons.error_outline,
                             iconColor: Colors.red,
                           ),
                           StatCard(
                             label: 'Value',
-                            value: '\$${_statistics?.totalValue.toStringAsFixed(0) ?? '0'}',
+                            value:
+                                '\$${_statistics?.totalValue.toStringAsFixed(0) ?? '0'}',
                             icon: Icons.attach_money,
                             iconColor: Colors.green,
                           ),
@@ -343,9 +336,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                           else
                             const SizedBox(
                               height: 200,
-                              child: Center(
-                                child: CircularProgressIndicator(),
-                              ),
+                              child: Center(child: CircularProgressIndicator()),
                             ),
                         ],
                       ),
