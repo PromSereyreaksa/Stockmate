@@ -21,9 +21,23 @@ class StockMovementChart extends StatelessWidget {
       return Container(
         height: 250,
         alignment: Alignment.center,
-        child: const Text(
-          'No data available',
-          style: TextStyle(color: Colors.black54),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.show_chart,
+              size: 48,
+              color: Colors.grey.shade300,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No data available',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -43,8 +57,28 @@ class StockMovementChart extends StatelessWidget {
 
     return Column(
       children: [
+        // Legend at the top
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildLegendItem(
+              'Stock In',
+              totalIn.toString(),
+              const Color(0xFF4CAF50), // Green
+            ),
+            const SizedBox(width: 32),
+            _buildLegendItem(
+              'Stock Out',
+              totalOut.toString(),
+              const Color(0xFFFF5252), // Red
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        
+        // Chart
         SizedBox(
-          height: 200,
+          height: 220,
           child: LineChart(
             LineChartData(
               gridData: FlGridData(
@@ -53,8 +87,9 @@ class StockMovementChart extends StatelessWidget {
                 horizontalInterval: interval,
                 getDrawingHorizontalLine: (value) {
                   return FlLine(
-                    color: Colors.grey.withValues(alpha: 0.1),
+                    color: Colors.grey.withValues(alpha: 0.15),
                     strokeWidth: 1,
+                    dashArray: [5, 5],
                   );
                 },
               ),
@@ -62,14 +97,20 @@ class StockMovementChart extends StatelessWidget {
                 leftTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 40,
+                    reservedSize: 42,
                     interval: interval,
                     getTitlesWidget: (value, meta) {
-                      return Text(
-                        value.toInt().toString(),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.black54,
+                      if (value == 0) return const SizedBox();
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Text(
+                          value.toInt().toString(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.right,
                         ),
                       );
                     },
@@ -84,18 +125,21 @@ class StockMovementChart extends StatelessWidget {
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 30,
-                    interval: 1,
+                    reservedSize: 32,
+                    interval: data.length <= 7 ? 1 : (data.length / 7).ceil().toDouble(),
                     getTitlesWidget: (value, meta) {
-                      if (value.toInt() >= data.length) return const SizedBox();
+                      if (value.toInt() >= data.length || value < 0) {
+                        return const SizedBox();
+                      }
                       final date = data[value.toInt()].date;
                       return Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          DateFormat('MM/dd').format(date),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.black54,
+                          DateFormat('M/d').format(date),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       );
@@ -103,13 +147,19 @@ class StockMovementChart extends StatelessWidget {
                   ),
                 ),
               ),
-              borderData: FlBorderData(show: false),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  left: BorderSide(color: Colors.grey.shade300, width: 1),
+                  bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                ),
+              ),
               minX: 0,
               maxX: (data.length - 1).toDouble(),
               minY: 0,
               maxY: maxValue.toDouble(),
               lineBarsData: [
-                // Stock In line (black)
+                // Stock In line (Green)
                 LineChartBarData(
                   spots: data.asMap().entries.map((entry) {
                     return FlSpot(
@@ -118,25 +168,34 @@ class StockMovementChart extends StatelessWidget {
                     );
                   }).toList(),
                   isCurved: true,
-                  color: Colors.black87,
+                  curveSmoothness: 0.3,
+                  color: const Color(0xFF4CAF50),
                   barWidth: 3,
+                  isStrokeCapRound: true,
                   dotData: FlDotData(
                     show: true,
                     getDotPainter: (spot, percent, barData, index) {
                       return FlDotCirclePainter(
                         radius: 4,
-                        color: Colors.black87,
-                        strokeWidth: 2,
-                        strokeColor: Colors.white,
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                        strokeColor: const Color(0xFF4CAF50),
                       );
                     },
                   ),
                   belowBarData: BarAreaData(
                     show: true,
-                    color: Colors.black87.withValues(alpha: 0.1),
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF4CAF50).withValues(alpha: 0.2),
+                        const Color(0xFF4CAF50).withValues(alpha: 0.05),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
                   ),
                 ),
-                // Stock Out line (grey)
+                // Stock Out line (Red)
                 LineChartBarData(
                   spots: data.asMap().entries.map((entry) {
                     return FlSpot(
@@ -145,22 +204,31 @@ class StockMovementChart extends StatelessWidget {
                     );
                   }).toList(),
                   isCurved: true,
-                  color: Colors.grey,
+                  curveSmoothness: 0.3,
+                  color: const Color(0xFFFF5252),
                   barWidth: 3,
+                  isStrokeCapRound: true,
                   dotData: FlDotData(
                     show: true,
                     getDotPainter: (spot, percent, barData, index) {
                       return FlDotCirclePainter(
                         radius: 4,
-                        color: Colors.grey,
-                        strokeWidth: 2,
-                        strokeColor: Colors.white,
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                        strokeColor: const Color(0xFFFF5252),
                       );
                     },
                   ),
                   belowBarData: BarAreaData(
                     show: true,
-                    color: Colors.grey.withValues(alpha: 0.1),
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFFFF5252).withValues(alpha: 0.2),
+                        const Color(0xFFFF5252).withValues(alpha: 0.05),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
                   ),
                 ),
               ],
@@ -169,75 +237,82 @@ class StockMovementChart extends StatelessWidget {
                 touchTooltipData: LineTouchTooltipData(
                   getTooltipColor: (touchedSpot) => Colors.black87,
                   tooltipRoundedRadius: 8,
-                  tooltipPadding: const EdgeInsets.all(8),
+                  tooltipPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   getTooltipItems: (touchedSpots) {
                     return touchedSpots.map((spot) {
                       final date = data[spot.x.toInt()].date;
                       final isIn = spot.barIndex == 0;
+                      final value = spot.y.toInt();
+                      
                       return LineTooltipItem(
-                        '${isIn ? 'In' : 'Out'}: ${spot.y.toInt()}\n${DateFormat('MMM dd').format(date)}',
-                        const TextStyle(
+                        '${isIn ? 'Stock In' : 'Stock Out'}\n${DateFormat('MMM dd, yyyy').format(date)}\n$value units',
+                        TextStyle(
                           color: Colors.white,
                           fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
+                          height: 1.4,
                         ),
                       );
                     }).toList();
                   },
                 ),
+                touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
+                  // Optional: Add haptic feedback on touch
+                },
+                handleBuiltInTouches: true,
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildLegendItem(
-              Icons.circle,
-              'In',
-              totalIn.toString(),
-              Colors.black87,
-            ),
-            const SizedBox(width: 32),
-            _buildLegendItem(
-              Icons.circle,
-              'Out',
-              totalOut.toString(),
-              Colors.grey,
-            ),
-          ],
         ),
       ],
     );
   }
 
-  Widget _buildLegendItem(
-    IconData icon,
-    String label,
-    String value,
-    Color color,
-  ) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 12),
-        const SizedBox(width: 4),
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.black54,
-          ),
+  Widget _buildLegendItem(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+          width: 1,
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
