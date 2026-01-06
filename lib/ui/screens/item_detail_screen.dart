@@ -29,6 +29,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   List<StockMovement> _recentActivity = [];
   bool _isLoading = true;
   bool _showAllActivity = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -37,10 +38,22 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
       final product = await _productRepo.getProductById(widget.productId);
+      
+      if (product == null) {
+        setState(() {
+          _errorMessage = 'Product not found.';
+          _isLoading = false;
+        });
+        return;
+      }
+      
       final history = await _stockRepo.getStockHistory(widget.productId);
 
       setState(() {
@@ -49,7 +62,10 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _errorMessage = 'Error loading product: ${e.toString()}';
+        _isLoading = false;
+      });
     }
   }
 
@@ -106,7 +122,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading || _product == null) {
+    if (_isLoading) {
       return Scaffold(
         backgroundColor: const Color(0xFFF5F5F5),
         appBar: AppBar(
@@ -116,6 +132,60 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
           foregroundColor: Colors.black87,
         ),
         body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_errorMessage != null || _product == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF5F5F5),
+        appBar: AppBar(
+          title: const Text('Item Details'),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          foregroundColor: Colors.black87,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _errorMessage ?? 'Product not found',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Go Back',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
