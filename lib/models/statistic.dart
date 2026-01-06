@@ -34,54 +34,46 @@ class Statistics {
   }
 }
 
-class StockMovementData {
-  final DateTime date;
-  final int stockIn;
-  final int stockOut;
+class StockMovement {
+  final int? id;
+  final String productId;
+  final int previousQty;
+  final int newQty;
+  final String changeType;
+  final String? reason;
+  final DateTime timestamp;
 
-  StockMovementData({
-    required this.date,
-    required this.stockIn,
-    required this.stockOut,
+  StockMovement({
+    this.id,
+    required this.productId,
+    required this.previousQty,
+    required this.newQty,
+    required this.changeType,
+    this.reason,
+    required this.timestamp,
   });
 
-  Map<String, Object?> toMap() {
+  Map<String, dynamic> toMap() {
     return {
-      'date': date.millisecondsSinceEpoch,
-      'stock_in': stockIn,
-      'stock_out': stockOut,
+      if (id != null) 'id': id,
+      'productId': productId,
+      'previousQty': previousQty,
+      'newQty': newQty,
+      'changeType': changeType,
+      'reason': reason,
+      'timestamp': timestamp.toIso8601String(),
     };
   }
 
-  static StockMovementData fromDb(Map<String, Object?> row) {
-    return StockMovementData(
-      date: DateTime.fromMillisecondsSinceEpoch(row['date'] as int),
-      stockIn: row['stock_in'] as int,
-      stockOut: row['stock_out'] as int,
-    );
-  }
-}
-
-class StockMovementSummary {
-  final int totalIn;
-  final int totalOut;
-  final List<StockMovementData> dailyData;
-
-  StockMovementSummary({
-    required this.totalIn,
-    required this.totalOut,
-    required this.dailyData,
-  });
-
-  factory StockMovementSummary.fromDailyData(
-      List<StockMovementData> data) {
-    final totalIn = data.fold(0, (sum, e) => sum + e.stockIn);
-    final totalOut = data.fold(0, (sum, e) => sum + e.stockOut);
-
-    return StockMovementSummary(
-      totalIn: totalIn,
-      totalOut: totalOut,
-      dailyData: data,
+  static StockMovement fromMap(Map<String, dynamic> map) {
+    return StockMovement(
+      id: map['id'] as int?,
+      productId: map['productId'] as String,
+      previousQty: map['previousQty'] as int,
+      newQty: map['newQty'] as int,
+      changeType: map['changeType'] as String,
+      reason: map['reason'] as String?,
+      timestamp: DateTime.parse(map['timestamp'] as String),
     );
   }
 }

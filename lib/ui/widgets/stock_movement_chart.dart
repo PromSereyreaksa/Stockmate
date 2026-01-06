@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import '/models/statistic.dart';
+import '/models/stock_movement.dart';
 
 class StockMovementChart extends StatelessWidget {
   final List<StockMovementData> data;
@@ -260,7 +260,6 @@ class StockMovementChart extends StatelessWidget {
                   },
                 ),
                 touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
-                  // Optional: Add haptic feedback on touch
                 },
                 handleBuiltInTouches: true,
               ),

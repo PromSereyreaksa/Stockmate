@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../data/products_repository.dart';
+import '../../data/repositories/product_repository.dart';
 import '../../models/product.dart';
 import '../widgets/product_card.dart';
 import '../widgets/product_filter.dart';
 import 'item_detail_screen.dart';
 
-enum StockFilterType { all, inStock, lowStock, outOfStock }
+enum StockFilterType { all, inStock, lowStock, outOfStock, expired, almostExpired }
 
 enum SortOption { name, price, stock }
 
@@ -23,7 +23,7 @@ class _ProductListScreenState extends State<ProductListScreen>
         with
         AutomaticKeepAliveClientMixin {
   // i need to keep filter/search/sort state when switching tabs
-  final ProductsRepository _repository = ProductsRepository();
+  final ProductRepository _productRepo = ProductRepository();
   final TextEditingController _searchController = TextEditingController();
 
   List<Product> _allProducts = [];
@@ -59,14 +59,14 @@ class _ProductListScreenState extends State<ProductListScreen>
 
   // Load all products from repository and update UI
   Future<void> _loadProducts() async {
-    // I show a loading indicator while fetching data
+    //show a loading indicator while fetching data
     setState(() => _isLoading = true);
 
-    // I fetch all products from the repository (database/storage)
-    final products = await _repository.getAllProducts();
+    //fetch all products from the repository
+    final products = await _productRepo.getAllProducts();
 
     setState(() {
-      // I remove deleted products from the list
+      //remove deleted products from the list
       _allProducts = products.where((p) => !p.isDeleted).toList();
 
       _applyFilters();
@@ -88,41 +88,13 @@ class _ProductListScreenState extends State<ProductListScreen>
       }).toList();
     }
 
-    switch (_currentFilter) {
-      case StockFilterType.inStock:
-        filtered = filtered
-            .where((p) => !p.isLowStock && !p.isOutOfStock)
-            .toList();
-        break;
+    // Apply filter using repository
+    String filterKey = _currentFilter.name;
+    filtered = _productRepo.filterByStockStatus(filtered, filterKey);
 
-      case StockFilterType.lowStock:
-        filtered = filtered
-            .where((p) => p.isLowStock && !p.isOutOfStock)
-            .toList();
-        break;
-
-      case StockFilterType.outOfStock:
-        filtered = filtered.where((p) => p.isOutOfStock).toList();
-        break;
-
-      case StockFilterType.all:
-        // no filter anything if "All" is selected
-        break;
-    }
-
-    switch (_currentSort) {
-      case SortOption.name:
-        filtered.sort((a, b) => a.name.compareTo(b.name));
-        break;
-
-      case SortOption.price:
-        filtered.sort((a, b) => a.sellingPrice.compareTo(b.sellingPrice));
-        break;
-
-      case SortOption.stock:
-        filtered.sort((a, b) => b.currentQuantity.compareTo(a.currentQuantity));
-        break;
-    }
+    // Apply sorting using repository
+    String sortKey = _currentSort.name;
+    filtered = _productRepo.sortProducts(filtered, sortKey);
 
     // update the UI with the filtered and sorted products
     setState(() {
@@ -132,7 +104,7 @@ class _ProductListScreenState extends State<ProductListScreen>
 
   Future<void> _deleteProduct(Product product) async {
     // delete the product from the repository using its ID
-    await _repository.deleteProduct(product.productId);
+    await _productRepo.deleteProduct(product.productId);
 
     // calling loadProducts to reload the product list after deletion
     _loadProducts();
@@ -285,6 +257,28 @@ class _ProductListScreenState extends State<ProductListScreen>
                   onTap: () {
                     setState(() {
                       _currentFilter = StockFilterType.outOfStock;
+                      _applyFilters();
+                    });
+                  },
+                ),
+                const SizedBox(width: 8),
+                ProductFilter(
+                  label: 'Expired',
+                  isSelected: _currentFilter == StockFilterType.expired,
+                  onTap: () {
+                    setState(() {
+                      _currentFilter = StockFilterType.expired;
+                      _applyFilters();
+                    });
+                  },
+                ),
+                const SizedBox(width: 8),
+                ProductFilter(
+                  label: 'Almost Expired',
+                  isSelected: _currentFilter == StockFilterType.almostExpired,
+                  onTap: () {
+                    setState(() {
+                      _currentFilter = StockFilterType.almostExpired;
                       _applyFilters();
                     });
                   },

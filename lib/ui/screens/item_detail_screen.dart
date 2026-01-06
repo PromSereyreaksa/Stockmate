@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
-import '../../data/products_repository.dart';
+import '../../data/repositories/product_repository.dart';
+import '../../data/repositories/stock_repository.dart';
 import '../../models/product.dart';
+import '../../models/statistic.dart';
 import '../../utils/stock_status.dart';
 import '../widgets/info_row.dart';
 import '../widgets/activity_item.dart';
@@ -20,10 +22,11 @@ class ItemDetailScreen extends StatefulWidget {
 }
 
 class _ItemDetailScreenState extends State<ItemDetailScreen> {
-  final ProductsRepository _repository = ProductsRepository();
+  final ProductRepository _productRepo = ProductRepository();
+  final StockRepository _stockRepo = StockRepository();
 
   Product? _product;
-  List<Map<String, dynamic>> _recentActivity = [];
+  List<StockMovement> _recentActivity = [];
   bool _isLoading = true;
   bool _showAllActivity = false;
 
@@ -37,8 +40,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final product = await _repository.getProductById(widget.productId);
-      final history = await _repository.getStockHistory(widget.productId);
+      final product = await _productRepo.getProductById(widget.productId);
+      final history = await _stockRepo.getStockHistory(widget.productId);
 
       setState(() {
         _product = product;
@@ -62,7 +65,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
           final messenger = ScaffoldMessenger.of(context);
 
           final newQuantity = _product!.currentQuantity + quantity;
-          await _repository.updateStock(_product!.productId, newQuantity);
+          await _stockRepo.updateStock(_product!.productId, newQuantity);
           _loadData();
 
           if (!mounted) return;
@@ -369,11 +372,11 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                       itemBuilder: (context, index) {
                         final activity = displayedActivity[index];
                         return ActivityItem(
-                          type: activity['changeType'] as String,
-                          previousQty: activity['previousQty'] as int,
-                          newQty: activity['newQty'] as int,
-                          timestamp: DateTime.parse(activity['timestamp']),
-                          reason: activity['reason'] as String?,
+                          type: activity.changeType,
+                          previousQty: activity.previousQty,
+                          newQty: activity.newQty,
+                          timestamp: activity.timestamp,
+                          reason: activity.reason,
                         );
                       },
                     ),

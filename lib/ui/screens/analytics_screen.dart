@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '/data/products_repository.dart';
-import '/models/product.dart';
-import '/models/statistic.dart';
+import '../../data/repositories/product_repository.dart';
+import '../../data/repositories/statistics_repository.dart';
+import '../../data/repositories/stock_repository.dart';
+import '../../models/product.dart';
+import '../../models/statistic.dart';
+import '../../models/stock_movement.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/stock_movement_chart.dart';
 import '../widgets/product_card.dart';
@@ -16,7 +19,9 @@ class AnalyticsScreen extends StatefulWidget {
 }
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
-  final ProductsRepository _repository = ProductsRepository();
+  final ProductRepository _productRepo = ProductRepository();
+  final StatisticsRepository _statsRepo = StatisticsRepository();
+  final StockRepository _stockRepo = StockRepository();
 
   Statistics? _statistics;
   StockMovementSummary? _movementSummary;
@@ -36,13 +41,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
     try {
       // Get statistics
-      final stats = await _repository.getStatistics();
+      final stats = await _statsRepo.getStatistics();
 
       // Get stock movement data
       final movements = await _getStockMovements(_selectedDays);
 
       // Get initial products (all)
-      final products = await _repository.getAllProducts();
+      final products = await _productRepo.getAllProducts();
 
       setState(() {
         _statistics = stats;
@@ -71,26 +76,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
 
     // Get all products and their history
-    final products = await _repository.getAllProducts();
+    final products = await _productRepo.getAllProducts();
     int totalIn = 0;
     int totalOut = 0;
 
     for (var product in products) {
-      final history = await _repository.getStockHistory(product.productId);
+      final history = await _stockRepo.getStockHistory(product.productId);
       for (var movement in history) {
-        final timestamp = DateTime.parse(movement['timestamp']);
+        final timestamp = movement.timestamp;
         if (timestamp.isAfter(startDate)) {
           final dateKey = DateFormat('yyyy-MM-dd').format(timestamp);
-          final changeType = movement['changeType'] as String;
-          final change =
-              (movement['newQty'] as int) - (movement['previousQty'] as int);
+          final changeType = movement.changeType;
+          final change = movement.newQty - movement.previousQty;
 
           if (changeType == 'add' && change > 0) {
-            dailyIn[dateKey] = (dailyIn[dateKey] ?? 0) + change;
-            totalIn += change;
+            dailyIn[dateKey] = ((dailyIn[dateKey] ?? 0) + change).toInt();
+            totalIn += change.toInt();
           } else if (changeType == 'remove' && change < 0) {
-            dailyOut[dateKey] = (dailyOut[dateKey] ?? 0) + change.abs();
-            totalOut += change.abs();
+            dailyOut[dateKey] = ((dailyOut[dateKey] ?? 0) + change.abs()).toInt();
+            totalOut += change.abs().toInt();
           }
         }
       }
@@ -127,19 +131,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
     switch (filter) {
       case 'Low Stock':
-        products = await _repository.getLowStockProducts();
+        products = await _statsRepo.getLowStockProducts();
         break;
       case 'Out of Stock':
-        final allProducts = await _repository.getAllProducts();
+        final allProducts = await _productRepo.getAllProducts();
         products = allProducts.where((p) => p.isOutOfStock).toList();
         break;
       case 'Categories':
-        products = await _repository.getAllProducts();
+        products = await _productRepo.getAllProducts();
         // Sort by category
         products.sort((a, b) => a.category.name.compareTo(b.category.name));
         break;
       default: // All Items
-        products = await _repository.getAllProducts();
+        products = await _productRepo.getAllProducts();
     }
 
     setState(() {

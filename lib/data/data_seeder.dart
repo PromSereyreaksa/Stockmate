@@ -1,11 +1,13 @@
 import '../models/product.dart';
-import 'products_repository.dart';
+import 'repositories/product_repository.dart';
+import 'repositories/stock_repository.dart';
 
 class DataSeeder {
-  final ProductsRepository _repository = ProductsRepository();
+  final ProductRepository _productRepo = ProductRepository();
+  final StockRepository _stockRepo = StockRepository();
 
   Future<void> seedInitialData() async {
-    final products = await _repository.getAllProducts();
+    final products = await _productRepo.getAllProducts();
     if (products.isNotEmpty) return;
 
     final initialProducts = [
@@ -92,7 +94,7 @@ class DataSeeder {
     ];
 
     for (var product in initialProducts) {
-      await _repository.insertProduct(product);
+      await _productRepo.createProduct(product);
     }
     
     // Seed some stock movement history for the last 7 days
@@ -140,7 +142,7 @@ class DataSeeder {
     
     for (var movement in movements) {
       final timestamp = now.subtract(Duration(days: movement['daysAgo'] as int));
-      await _repository.addStockMovement(
+      await _stockRepo.addStockMovement(
         movement['productId'] as String,
         movement['prevQty'] as int,
         movement['newQty'] as int,

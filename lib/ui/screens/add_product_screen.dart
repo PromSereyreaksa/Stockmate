@@ -4,8 +4,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:uuid/uuid.dart';
 import 'dart:io';
-import '../../data/products_repository.dart';
+import '../../data/repositories/product_repository.dart';
 import '../../models/product.dart';
 
 class AddProductScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class AddProductScreen extends StatefulWidget {
 
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _repository = ProductsRepository();
+  final _productRepo = ProductRepository();
 
   // Controllers
   final _nameController = TextEditingController();
@@ -38,6 +39,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   int _quantity = 1;
   String? _imagePath;
   bool _isSaving = false;
+  DateTime _expiryDate = DateTime.now().add(const Duration(days: 365));
 
   @override
   void initState() {
@@ -60,6 +62,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _selectedCategory = product.category;
     _quantity = product.currentQuantity;
     _imagePath = product.imagePath.isNotEmpty ? product.imagePath : null;
+    _expiryDate = product.expDate;
   }
 
   @override
@@ -183,7 +186,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     try {
       final File tempFile = File(tempPath);
       if (!await tempFile.exists()) {
-        print('❌ Temp file does not exist: $tempPath');
         return tempPath;
       }
 
@@ -197,10 +199,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
       final String newPath = '$imagesDir/$fileName';
 
       await tempFile.copy(newPath);
-      print('✅ Image copied immediately to: $newPath');
       return newPath;
     } catch (e) {
-      print('❌ Error copying image immediately: $e');
       return tempPath; // Return original path as fallback
     }
   }
@@ -220,8 +220,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (isEditing) {
         productId = widget.product!.productId;
       } else {
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        productId = 'P${timestamp.toString().substring(7)}';
+        productId = const Uuid().v4();
       }
 
       // Parse prices
@@ -248,11 +247,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
             if (_imagePath != newPath) {
               await currentFile.copy(newPath);
               savedImagePath = newPath;
-              print('✅ Image copy to: $newPath');
             }
           }
         } catch (e) {
-          print('❌ Error renaming image: $e');
+          // Image renaming failed, use original path
         }
       }
 
@@ -264,9 +262,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
             ? 'No description'
             : _descriptionController.text.trim(),
         currentQuantity: _quantity,
-        expDate: isEditing
-            ? widget.product!.expDate
-            : DateTime.now().add(const Duration(days: 365)),
+        expDate: _expiryDate,
         stock: _quantity,
         minStock: minStock,
         costPrice: costPrice,
@@ -284,9 +280,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
       // Save to database
       if (isEditing) {
-        await _repository.updateProduct(product);
+        await _productRepo.updateProduct(product);
       } else {
-        await _repository.insertProduct(product);
+        await _productRepo.createProduct(product);
       }
 
       if (mounted) {
@@ -333,7 +329,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
         }
       }
     } catch (e) {
-      print('Error saving product: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -735,6 +730,70 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         contentPadding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Expiry Date
+                    const Text(
+                      'Expiry Date',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: _expiryDate,
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 3650)),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: ColorScheme.light(
+                                  primary: Colors.blue,
+                                  onPrimary: Colors.white,
+                                  surface: Colors.white,
+                                  onSurface: Colors.black,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null && picked != _expiryDate) {
+                          setState(() {
+                            _expiryDate = picked;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${_expiryDate.year}-${_expiryDate.month.toString().padLeft(2, '0')}-${_expiryDate.day.toString().padLeft(2, '0')}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.calendar_today,
+                              color: Colors.blue,
+                              size: 20,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),

@@ -56,6 +56,8 @@ class Product {
   bool get isLowStock => currentQuantity <= minStock;
   bool get isOutOfStock => currentQuantity == 0;
   bool get isExpiringSoon => expDate.difference(DateTime.now()).inDays <= 7;
+  bool get isNearlyExpired => expDate.difference(DateTime.now()).inDays <= 30 && expDate.isAfter(DateTime.now());
+  bool get isExpired => expDate.isBefore(DateTime.now());
   double get profitMargin => sellingPrice - costPrice;
 
   // Convert Product to Map for database
