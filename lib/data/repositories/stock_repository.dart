@@ -1,5 +1,5 @@
 import '../../services/database_service.dart';
-import '../../models/statistic.dart';
+import '../../models/stock_movement.dart';
 
 class StockRepository {
   final DatabaseService _dbService = DatabaseService.instance;

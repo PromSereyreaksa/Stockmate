@@ -4,7 +4,7 @@ import 'dart:io';
 import '../../data/repositories/product_repository.dart';
 import '../../data/repositories/stock_repository.dart';
 import '../../models/product.dart';
-import '../../models/statistic.dart';
+import '../../models/stock_movement.dart';
 import '../../utils/stock_status.dart';
 import '../widgets/info_row.dart';
 import '../widgets/activity_item.dart';
@@ -45,7 +45,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
     try {
       final product = await _productRepo.getProductById(widget.productId);
-      
+
       if (product == null) {
         setState(() {
           _errorMessage = 'Product not found.';
@@ -53,7 +53,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         });
         return;
       }
-      
+
       final history = await _stockRepo.getStockHistory(widget.productId);
 
       setState(() {
@@ -159,10 +159,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                 Text(
                   _errorMessage ?? 'Product not found',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
@@ -392,22 +389,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                           color: Colors.black87,
                         ),
                       ),
-                      if (_recentActivity.length > 3)
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _showAllActivity = !_showAllActivity;
-                            });
-                          },
-                          child: Text(
-                            _showAllActivity ? 'Show Less' : 'View All',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                    ],
+                      ],
                   ),
                   const SizedBox(height: 8),
 

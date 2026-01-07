@@ -225,7 +225,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: _stockAlerts.length,
                     itemBuilder: (context, index) {
                       final product = _stockAlerts[index];
-                      return StockAlertCard(product: product, onTap: () {});
+                      return StockAlertCard(
+                        product: product,
+                        onTap: () async {
+                          final result = await Navigator.pushNamed(
+                            context,
+                            '/item-detail',
+                            arguments: product.productId,
+                          );
+                          if (result == true) {
+                            _loadData();
+                          }
+                        },
+                      );
                     },
                   ),
 
@@ -270,7 +282,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: _nearlyExpiredProducts.length,
                     itemBuilder: (context, index) {
                       final product = _nearlyExpiredProducts[index];
-                      return StockAlertCard(product: product, onTap: () {});
+                      return StockAlertCard(
+                        product: product,
+                        onTap: () async {
+                          final result = await Navigator.pushNamed(
+                            context,
+                            '/item-detail',
+                            arguments: product.productId,
+                          );
+                          if (result == true) {
+                            _loadData();
+                          }
+                        },
+                      );
                     },
                   ),
 
@@ -314,6 +338,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         product: product,
                         onDecrement: () => _updateStock(product, -1),
                         onIncrement: () => _updateStock(product, 1),
+                        onTap: () async {
+                          final result = await Navigator.pushNamed(
+                            context,
+                            '/item-detail',
+                            arguments: product.productId,
+                          );
+                          if (result == true) {
+                            _loadData();
+                          }
+                        },
                       );
                     },
                   ),

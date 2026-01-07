@@ -7,18 +7,20 @@ class RecentItemCard extends StatelessWidget {
   final Product product;
   final VoidCallback onDecrement;
   final VoidCallback onIncrement;
+  final VoidCallback? onTap;
 
   const RecentItemCard({
     super.key,
     required this.product,
     required this.onDecrement,
     required this.onIncrement,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
+      onTap: onTap ?? () {
         Navigator.push(
           context,
           MaterialPageRoute(

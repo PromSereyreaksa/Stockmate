@@ -4,6 +4,7 @@ import 'package:path/path.dart';
 import 'dart:io';
 import '../models/product.dart';
 import '../models/statistic.dart';
+import '../models/stock_movement.dart';
 
 class DatabaseService {
   static final DatabaseService instance = DatabaseService._init();
@@ -216,17 +217,7 @@ class DatabaseService {
   }
 
   Future<Statistics> getStatistics() async {
-    final db = await database;
-    final result = await db.rawQuery('''
-      SELECT 
-        COUNT(*) as total_items,
-        SUM(CASE WHEN currentQuantity <= minStock THEN 1 ELSE 0 END) as low_stock_count,
-        SUM(CASE WHEN currentQuantity = 0 THEN 1 ELSE 0 END) as out_of_stock_count,
-        SUM(currentQuantity * costPrice) as total_value,
-        SUM(currentQuantity * (sellingPrice - costPrice)) as estimated_profit
-      FROM products
-      WHERE isDeleted = 0
-    ''');
-    return Statistics.fromDb(result.first);
+    final products = await getAllProducts();
+    return Statistics.fromProducts(products);
   }
 }

@@ -63,62 +63,17 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Future<StockMovementSummary> _getStockMovements(int days) async {
     final startDate = DateTime.now().subtract(Duration(days: days));
 
-    // Get all products to access stock movements
-    Map<String, int> dailyIn = {};
-    Map<String, int> dailyOut = {};
-
-    // Initialize dates
-    for (int i = 0; i < days; i++) {
-      final date = startDate.add(Duration(days: i));
-      final dateKey = DateFormat('yyyy-MM-dd').format(date);
-      dailyIn[dateKey] = 0;
-      dailyOut[dateKey] = 0;
-    }
-
-    // Get all products and their history
+    // Get all products and their stock movements
     final products = await _productRepo.getAllProducts();
-    int totalIn = 0;
-    int totalOut = 0;
+    final List<StockMovement> allMovements = [];
 
     for (var product in products) {
       final history = await _stockRepo.getStockHistory(product.productId);
-      for (var movement in history) {
-        final timestamp = movement.timestamp;
-        if (timestamp.isAfter(startDate)) {
-          final dateKey = DateFormat('yyyy-MM-dd').format(timestamp);
-          final changeType = movement.changeType;
-          final change = movement.newQty - movement.previousQty;
-
-          if (changeType == 'add' && change > 0) {
-            dailyIn[dateKey] = ((dailyIn[dateKey] ?? 0) + change).toInt();
-            totalIn += change.toInt();
-          } else if (changeType == 'remove' && change < 0) {
-            dailyOut[dateKey] = ((dailyOut[dateKey] ?? 0) + change.abs()).toInt();
-            totalOut += change.abs().toInt();
-          }
-        }
-      }
+      allMovements.addAll(history);
     }
 
-    // Convert to list of StockMovementData
-    List<StockMovementData> dailyData = [];
-    for (int i = 0; i < days; i++) {
-      final date = startDate.add(Duration(days: i));
-      final dateKey = DateFormat('yyyy-MM-dd').format(date);
-      dailyData.add(
-        StockMovementData(
-          date: date,
-          stockIn: dailyIn[dateKey] ?? 0,
-          stockOut: dailyOut[dateKey] ?? 0,
-        ),
-      );
-    }
-
-    return StockMovementSummary(
-      totalIn: totalIn,
-      totalOut: totalOut,
-      dailyData: dailyData,
-    );
+    // Use the factory method to create the summary from movements
+    return StockMovementSummary.fromMovements(allMovements, startDate, days);
   }
 
   Future<void> _applyFilter(String filter) async {

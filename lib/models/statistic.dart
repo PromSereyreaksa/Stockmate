@@ -1,3 +1,5 @@
+import 'product.dart';
+
 class Statistics {
   final int totalItems;
   final int lowStockCount;
@@ -12,6 +14,42 @@ class Statistics {
     required this.totalValue,
     required this.estimatedProfit,
   });
+
+  /// Creates Statistics from a list of Product objects
+  /// Makes the dependency on Product data explicit
+  factory Statistics.fromProducts(List<Product> products) {
+    int totalItems = 0;
+    int lowStockCount = 0;
+    int outOfStockCount = 0;
+    double totalValue = 0.0;
+    double estimatedProfit = 0.0;
+
+    for (var product in products) {
+      // Only count non-deleted products
+      if (product.isDeleted) continue;
+      
+      totalItems++;
+      
+      if (product.isLowStock) {
+        lowStockCount++;
+      }
+      
+      if (product.isOutOfStock) {
+        outOfStockCount++;
+      }
+      
+      totalValue += product.currentQuantity * product.costPrice;
+      estimatedProfit += product.currentQuantity * product.profitMargin;
+    }
+
+    return Statistics(
+      totalItems: totalItems,
+      lowStockCount: lowStockCount,
+      outOfStockCount: outOfStockCount,
+      totalValue: totalValue,
+      estimatedProfit: estimatedProfit,
+    );
+  }
 
   Map<String, Object?> toMap(){
     return{
@@ -30,50 +68,6 @@ class Statistics {
       outOfStockCount: row['out_of_stock_count'] as int,
       totalValue: (row['total_value'] as num).toDouble(),
       estimatedProfit: (row['estimated_profit'] as num).toDouble(),
-    );
-  }
-}
-
-class StockMovement {
-  final int? id;
-  final String productId;
-  final int previousQty;
-  final int newQty;
-  final String changeType;
-  final String? reason;
-  final DateTime timestamp;
-
-  StockMovement({
-    this.id,
-    required this.productId,
-    required this.previousQty,
-    required this.newQty,
-    required this.changeType,
-    this.reason,
-    required this.timestamp,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      if (id != null) 'id': id,
-      'productId': productId,
-      'previousQty': previousQty,
-      'newQty': newQty,
-      'changeType': changeType,
-      'reason': reason,
-      'timestamp': timestamp.toIso8601String(),
-    };
-  }
-
-  static StockMovement fromMap(Map<String, dynamic> map) {
-    return StockMovement(
-      id: map['id'] as int?,
-      productId: map['productId'] as String,
-      previousQty: map['previousQty'] as int,
-      newQty: map['newQty'] as int,
-      changeType: map['changeType'] as String,
-      reason: map['reason'] as String?,
-      timestamp: DateTime.parse(map['timestamp'] as String),
     );
   }
 }
