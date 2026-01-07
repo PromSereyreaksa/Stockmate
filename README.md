@@ -27,7 +27,7 @@ StockMate is an offline stock management mobile application built with Flutter, 
 ## Diagrams
 
 ### Class Diagram - Domain Models
-![Class Diagram](ClassUML.png)
+![Class Diagram](ClassDiagram.jpeg)
 
 The class diagram shows the relationships between core domain models:
 - **Products** with computed properties (isLowStock, isOutOfStock, isExpired)
